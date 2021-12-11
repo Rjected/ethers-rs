@@ -993,6 +993,10 @@ impl Provider<MockProvider> {
         let mock_clone = mock.clone();
         (Self::new(mock), mock_clone)
     }
+
+    async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
+        self.request("eth_accounts", ()).await
+    }
 }
 
 /// infallible conversion of Bytes to Address/String
@@ -1202,6 +1206,8 @@ pub mod dev_rpc {
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
+    use std::convert::TryInto;
+
     use super::*;
     use crate::Http;
     use ethers_core::{
@@ -1294,10 +1300,10 @@ mod tests {
     async fn test_new_pending_txs_filter() {
         let num_txs = 5;
 
-        let geth = Geth::new().block_time(2u64).spawn();
-        let provider = Provider::<Http>::try_from(geth.endpoint())
-            .unwrap()
-            .interval(Duration::from_millis(1000));
+        // let geth = Geth::new().block_time(2u64).spawn();
+        let mock = MockProvider::new();
+        let provider = Provider::<MockProvider>::try_from(mock).unwrap();
+        let provider = mock.try_into();
         let accounts = provider.get_accounts().await.unwrap();
 
         let stream = provider.watch_pending_transactions().await.unwrap().stream();
