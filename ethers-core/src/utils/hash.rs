@@ -58,6 +58,9 @@ pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
 
 #[cfg(test)]
 mod tests {
+    use crate::types::{Signature, Bytes, NameOrAddress, transaction::eip2930::AccessList, Eip1559TransactionRequest};
+    use crate::utils::{U256, Address};
+    use std::str::FromStr;
     use super::*;
 
     #[test]
@@ -67,6 +70,38 @@ mod tests {
             hex::encode(keccak256(b"hello")),
             "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8"
         );
+    }
+
+
+    // test that we actually serialize rlp signed bytes
+    #[test]
+    fn test_raw_transaction() {
+        let tx = Eip1559TransactionRequest {
+            nonce: Some(65.into()),
+            from: Some(Address::from_str("e66b278fa9fbb181522f6916ec2f6d66ab846e04").unwrap()),
+            to: Some(NameOrAddress::Address(Address::from_str("11d7c2ab0d4aa26b7d8502f6a7ef6844908495c2").unwrap())),
+            value: Some(0.into()),
+            gas: Some(106703.into()),
+            data: Some(Bytes::from(b"\xe5\"S\x81")),
+            access_list: AccessList::default(),
+            max_priority_fee_per_gas: Some(1500000000.into()),
+            max_fee_per_gas: Some(1500000009.into()),
+            chain_id: Some(5.into()),
+        };
+
+        let sig = Signature {
+            v: 1u32.into(),
+            r: U256::from_str_radix("12010114865104992543118914714169554862963471200433926679648874237672573604889", 10).unwrap(),
+            s: U256::from_str_radix("22830728216401371437656932733690354795366167672037272747970692473382669718804", 10).unwrap(),
+        };
+
+        // first we get the rlp signed data
+        let rlp_expected = tx.rlp_signed(&sig);
+        let got_serialized = serialize(&tx);
+        println!("what are we sending? {:?}", &got_serialized);
+        let from_serialized: Bytes = serde_json::from_value(got_serialized).unwrap();
+
+        assert_eq!(rlp_expected, from_serialized);
     }
 
     // test vector taken from:
