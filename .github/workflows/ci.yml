@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - master
+      - deserialize-ci
   pull_request:
 
 name: Tests
