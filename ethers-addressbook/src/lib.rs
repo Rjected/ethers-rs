@@ -2,7 +2,7 @@ use ethers_core::types::{Address, Chain};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
-use std::collections::HashMap;
+use std::{collections::{HashMap, hash_map::DefaultHasher}, hash::{Hash, Hasher}};
 
 const CONTRACTS_JSON: &str = include_str!("./contracts/contracts.json");
 
@@ -10,7 +10,7 @@ static ADDRESSBOOK: Lazy<HashMap<String, Contract>> =
     Lazy::new(|| serde_json::from_str(CONTRACTS_JSON).unwrap());
 
 /// Wrapper around a hash map that maps a [chain](https://github.com/gakonst/ethers-rs/blob/master/ethers-core/src/types/chain.rs) to the contract's deployed address on that chain.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq)]
 pub struct Contract {
     addresses: HashMap<Chain, Address>,
 }
@@ -20,6 +20,32 @@ impl Contract {
     /// not found in the addressbook, the getter returns None.
     pub fn address(&self, chain: Chain) -> Option<Address> {
         self.addresses.get(&chain).cloned()
+    }
+}
+
+impl PartialEq for Contract {
+    fn eq(&self, other: &Self) -> bool {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        let curr_hash = hasher.finish();
+        hasher = DefaultHasher::new();
+        other.hash(&mut hasher);
+        curr_hash == hasher.finish()
+    }
+}
+
+impl Hash for Contract {
+    fn hash_slice<H: std::hash::Hasher>(data: &[Self], state: &mut H)
+    where
+            Self: Sized, {
+        data.iter().for_each(|contract| contract.hash(state))
+    }
+
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        for (chain, addr) in &self.addresses {
+            chain.hash(state);
+            addr.hash(state);
+        }
     }
 }
 
