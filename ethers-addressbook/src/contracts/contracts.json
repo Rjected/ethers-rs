@@ -50,5 +50,25 @@
 			"kovan": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
 			"optimism": "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 		}
-	}
+	},
+    "uniswapV2Router02": {
+        "addresses": {
+            "mainnet": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            "rinkeby": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            "ropsten": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            "goerli": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            "kovan": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+            "optimism": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+        }
+    },
+    "uni": {
+        "addresses": {
+            "mainnet": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+            "rinkeby": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+            "ropsten": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+            "goerli": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+            "kovan": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+            "optimism": "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
+        }
+    }
 }
