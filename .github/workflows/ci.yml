@@ -2,6 +2,8 @@ on:
   push:
     branches:
       - master
+      - consistent_chain_id
+      - personal-actions-donotmerge-ever
   pull_request:
 
 name: Tests
