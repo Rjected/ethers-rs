@@ -1,11 +1,11 @@
 #![allow(unused)]
 use ethers_providers::{Http, JsonRpcClient, Middleware, Provider, RINKEBY};
-
 use ethers_core::{
     types::{BlockNumber, TransactionRequest},
     utils::parse_units,
+    utils::serialize,
 };
-use ethers_middleware::signer::SignerMiddleware;
+use ethers_middleware::{nonce_manager::NonceManagerMiddleware, signer::SignerMiddleware};
 use ethers_signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer};
 use once_cell::sync::Lazy;
 use std::{convert::TryFrom, iter::Cycle, sync::atomic::AtomicU8, time::Duration};
@@ -74,12 +74,18 @@ async fn websocket_pending_txs_with_confirmations_testnet() {
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
     let provider = SignerMiddleware::new(provider, wallet);
+    let provider = NonceManagerMiddleware::new(provider, address);
     generic_pending_txs_test(provider, address).await;
 }
 
 #[cfg(not(feature = "celo"))]
 async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
-    let tx = TransactionRequest::new().to(who).from(who);
+    let nonce = provider
+        .get_transaction_count(who, Some(BlockNumber::Pending.into()))
+        .await
+        .unwrap()
+        .as_u64();
+    let tx = TransactionRequest::new().to(who).from(who).nonce(nonce);
     let pending_tx = provider.send_transaction(tx, None).await.unwrap();
     let tx_hash = *pending_tx;
     let receipt = pending_tx.confirmations(1).await.unwrap().unwrap();
@@ -97,6 +103,7 @@ async fn typed_txs() {
     let address = wallet.address();
     // our wallet
     let provider = SignerMiddleware::new(provider, wallet);
+    let provider = NonceManagerMiddleware::new(provider, address);
 
     // Uncomment the below and run this test to re-fund the wallets if they get drained.
     // Would be ideal if we'd have a way to do this automatically, but this should be
@@ -114,14 +121,18 @@ async fn typed_txs() {
         assert_eq!(tx.transaction_type, Some(expected.into()));
     }
 
-    let mut nonce = provider.get_transaction_count(address, None).await.unwrap();
+    let mut nonce = provider
+        .get_transaction_count(address, Some(BlockNumber::Pending.into()))
+        .await
+        .unwrap()
+        .as_u64();
     let tx = TransactionRequest::new().from(address).to(address).nonce(nonce);
-    nonce += 1.into();
+    nonce += 1;
     let tx1 =
         provider.send_transaction(tx.clone(), Some(BlockNumber::Pending.into())).await.unwrap();
 
     let tx = tx.clone().nonce(nonce).from(address).to(address).with_access_list(vec![]);
-    nonce += 1.into();
+    nonce += 1;
     let tx2 = provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap();
 
     let tx = Eip1559TransactionRequest::new().from(address).to(address).nonce(nonce);
