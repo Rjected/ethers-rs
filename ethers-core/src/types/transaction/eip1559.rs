@@ -1,10 +1,12 @@
-use super::{eip2930::AccessList, normalize_v, rlp_opt, extract_chain_id};
+use super::{eip2930::AccessList, normalize_v, rlp_opt};
 use crate::{
-    types::{Address, Bytes, NameOrAddress, Signature, TransactionRequest, Transaction, H256, U256, U64, SignatureError},
+    types::{
+        Address, Bytes, NameOrAddress, Signature, SignatureError, Transaction, H256, U256, U64,
+    },
     utils::keccak256,
 };
-use thiserror::Error;
 use rlp::{Decodable, DecoderError, RlpStream};
+use thiserror::Error;
 
 /// EIP-1559 transactions have 9 fields
 const NUM_TX_FIELDS: usize = 9;
