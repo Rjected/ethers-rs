@@ -60,7 +60,7 @@ pub struct AccessListItem {
 }
 
 /// An EIP-2930 transaction is a legacy transaction including an [`AccessList`].
-#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Eip2930TransactionRequest {
     #[serde(flatten)]
     pub tx: TransactionRequest,
