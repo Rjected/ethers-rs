@@ -12,6 +12,7 @@ pub use transaction::{
     eip1559::Eip1559TransactionRequest,
     eip2930::Eip2930TransactionRequest,
     request::TransactionRequest,
+    signed::SignedTransactionRequest,
     response::{Transaction, TransactionReceipt},
 };
 
