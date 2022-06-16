@@ -1,4 +1,3 @@
-use fastrlp::{RlpEncodable, RlpDecodable};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
@@ -11,7 +10,7 @@ use std::{
 };
 
 /// Wrapper type around Bytes to deserialize/serialize "0x" prefixed ethereum hex strings
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd, RlpEncodable, RlpDecodable)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Ord, PartialOrd)]
 pub struct Bytes(
     #[serde(serialize_with = "serialize_bytes", deserialize_with = "deserialize_bytes")]
     pub  bytes::Bytes,
@@ -194,22 +193,5 @@ mod tests {
         let b = Bytes::from_str("1213");
         let b = b.unwrap();
         assert_eq!(b.as_ref(), hex::decode("1213").unwrap());
-    }
-
-    #[test]
-    fn test_encodable() {
-        use fastrlp::Encodable;
-        let b = Bytes::from_str("0x0123456789abcdef");
-        assert!(b.is_ok());
-        let b = b.unwrap();
-
-        let mut encoding = vec![];
-        b.encode(&mut encoding);
-
-        // 0x88 - 0x80 + length (8)
-        // then the rest of the string
-        let expected_encoding = vec![0x88, 0x01, 0x023, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef];
-        assert_eq!(expected_encoding, encoding);
-
     }
 }
