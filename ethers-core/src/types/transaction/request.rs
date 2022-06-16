@@ -7,7 +7,7 @@ use crate::{
     utils::keccak256,
 };
 
-use fastrlp::length_of_length;
+use fastrlp::{length_of_length, Encodable};
 use rlp::{Decodable, RlpStream};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -280,102 +280,10 @@ impl TransactionRequest {
 
         Ok((txn, sig))
     }
-}
 
-impl fastrlp::Decodable for TransactionRequest {
-    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
-        // we need to decode in the right order, so let's define a struct and just derive the
-        // decoding
-        // [nonce, gas-price, gas, to, value, data, chainid, 0, 0]
-        println!("tx body with header: {:X?}", buf);
-        let list_header = *buf.first().ok_or(fastrlp::DecodeError::Custom(
-            "Cannot decode a transaction from an empty list",
-        ))?;
-        let mut tx_body = if list_header <= 0xf7 {
-            &buf[1..]
-        } else {
-            let len_of_len = list_header as usize - 0xf7;
-            &buf[1 + len_of_len..]
-        };
-
-        let mut request = TransactionRequest::default();
-        request.nonce =
-            Some(<bytes::Bytes as fastrlp::Decodable>::decode(&mut tx_body)?[..].into());
-        request.gas_price =
-            Some(<bytes::Bytes as fastrlp::Decodable>::decode(&mut tx_body)?[..].into());
-        request.gas = Some(<bytes::Bytes as fastrlp::Decodable>::decode(&mut tx_body)?[..].into());
-        request.to = Some(<NameOrAddress as fastrlp::Decodable>::decode(&mut tx_body)?);
-        request.value =
-            Some(<bytes::Bytes as fastrlp::Decodable>::decode(&mut tx_body)?[..].into());
-
-        let decoded_data = <bytes::Bytes as fastrlp::Decodable>::decode(&mut tx_body)?;
-        request.data = match decoded_data.len() {
-            0 => None,
-            _ => Some(Bytes(decoded_data)),
-        };
-        request.chain_id = if !tx_body.is_empty() {
-            // If the transaction includes more info, like the chainid, as we serialize in `rlp`,
-            // this will decode that value.
-            Some(<bytes::Bytes as fastrlp::Decodable>::decode(&mut tx_body)?[..].into())
-        } else {
-            None
-        };
-        Ok(request)
-    }
-}
-
-impl fastrlp::Encodable for TransactionRequest {
-    fn length(&self) -> usize {
-        // add each of the fields' rlp encoded lengths
-        let mut length: usize = 0;
-        // the max value for a single byte to represent itself is 0x7f
-        let max_for_header = U256::from(0x7fu8);
-        // the number of rlp string headers - each U256 can be either a single byte (and is < 0x7f)
-        // or less than 32
-        let mut headers_len = 0;
-        let nonce_len = 32 - self.nonce.unwrap_or_default().leading_zeros() as usize / 8;
-        headers_len += if self.nonce.unwrap_or_default() < max_for_header { 0 } else { 1 };
-        length += nonce_len;
-
-        length += 32 - self.gas_price.unwrap_or_default().leading_zeros() as usize / 8;
-        headers_len += if self.gas_price.unwrap_or_default() < max_for_header { 0 } else { 1 };
-
-        length += 32 - self.gas.unwrap_or_default().leading_zeros() as usize / 8;
-        headers_len += if self.gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
-
-        let to_addr =
-            self.to.to_owned().unwrap_or_else(|| NameOrAddress::Address(Address::default()));
-        length += to_addr.length();
-
-        length += 32 - self.value.unwrap_or_default().leading_zeros() as usize / 8;
-        headers_len += if self.value.unwrap_or_default() < max_for_header { 0 } else { 1 };
-
-        length += self.data.to_owned().unwrap_or_default().0.length();
-
-        length += self.chain_id.unwrap_or_default().as_u64().length();
-        length += 0u64.length();
-        length += 0u64.length();
-        length += headers_len;
-
-        length
-    }
-
-    fn encode(&self, out: &mut dyn bytes::BufMut) {
-        // [nonce, gas-price, gas, to, value, data, chainid, 0, 0]
+    /// Encodes the fields of the TransactionRequest into the input BufMut
+    pub(crate) fn encode_tx_body(&self, out: &mut dyn bytes::BufMut) {
         let mut uint_container = [0x00; 32];
-
-        let encoding_len = self.length();
-        // have to implement header encoding rules for lists since the transaction will be encoded
-        // as a list
-        if encoding_len <= 55 {
-            let header = self.length() as u8 + 0xc0;
-            out.put_u8(header);
-        } else {
-            let len_of_len = length_of_length(encoding_len);
-            out.put_uint(encoding_len as u64, len_of_len);
-            out.put_u8(0xf7 + len_of_len as u8);
-        }
-
         let nonce = self.nonce.unwrap_or_default();
         nonce.to_big_endian(&mut uint_container[..]);
         let nonce_bytes = &uint_container[31 - nonce.bits() as usize / 8..];
@@ -401,8 +309,128 @@ impl fastrlp::Encodable for TransactionRequest {
         value_bytes.encode(out);
 
         self.data.to_owned().unwrap_or_default().0.encode(out);
+    }
 
-        self.chain_id.unwrap_or_default().as_u64().encode(out);
+    /// Returns the rlp length of the TransactionRequest body, not including trailing EIP155
+    /// fields, any signature fields, or the rlp list header
+    pub(crate) fn tx_body_length(&self) -> usize {
+        let mut length: usize = 0;
+
+        length += 32 - self.nonce.unwrap_or_default().leading_zeros() as usize / 8;
+        length += 32 - self.gas_price.unwrap_or_default().leading_zeros() as usize / 8;
+        length += 32 - self.gas.unwrap_or_default().leading_zeros() as usize / 8;
+
+        let to_addr =
+            self.to.to_owned().unwrap_or_else(|| NameOrAddress::Address(Address::default()));
+        length += to_addr.length();
+
+        length += 32 - self.value.unwrap_or_default().leading_zeros() as usize / 8;
+
+        length += self.data.to_owned().unwrap_or_default().0.length();
+        length
+    }
+
+    /// Decodes transaction fields from an RLP string.
+    pub(crate) fn decode_tx_body(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        // [nonce, gas-price, gas, to, value, data, chainid, 0, 0]
+        let mut request = TransactionRequest::default();
+
+        request.nonce =
+            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+        request.gas_price =
+            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+        request.gas = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+
+        let first = *buf.first().ok_or(fastrlp::DecodeError::Custom("cannot decode an address from an empty list"))?;
+        // 0x0 is encoded as an empty rlp list, 0x80
+        request.to = if first == 0x80u8 {
+            // consume the empty list
+            *buf = &buf[1..];
+            None
+        } else {
+            Some(<NameOrAddress as fastrlp::Decodable>::decode(buf)?)
+        };
+        request.value =
+            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+
+        let decoded_data = <bytes::Bytes as fastrlp::Decodable>::decode(buf)?;
+        request.data = match decoded_data.len() {
+            0 => None,
+            _ => Some(Bytes(decoded_data)),
+        };
+        Ok(request)
+    }
+}
+
+impl fastrlp::Decodable for TransactionRequest {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        let list_header = *buf.first().ok_or(fastrlp::DecodeError::Custom(
+            "Cannot decode a transaction from an empty list",
+        ))?;
+
+        // slice out the rlp list header
+        *buf = if list_header <= 0xf7 {
+            &buf[1..]
+        } else {
+            let len_of_len = list_header as usize - 0xf7;
+            &buf[1 + len_of_len..]
+        };
+
+        let mut request = Self::decode_tx_body(buf)?;
+        request.chain_id = if !buf.is_empty() {
+            // If the transaction includes more info, like the chainid, as we serialize in `rlp`,
+            // this will decode that value.
+            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into())
+        } else {
+            None
+        };
+        Ok(request)
+    }
+}
+
+impl fastrlp::Encodable for TransactionRequest {
+    fn length(&self) -> usize {
+        // add each of the fields' rlp encoded lengths
+        let mut length: usize = 0;
+        // the max value for a single byte to represent itself is 0x7f
+        let max_for_header = U256::from(0x7fu8);
+        // the number of rlp string headers - each U256 can be either a single byte (and is < 0x7f)
+        // or less than 32
+        let mut headers_len = 0;
+        headers_len += if self.nonce.unwrap_or_default() < max_for_header { 0 } else { 1 };
+        headers_len += if self.gas_price.unwrap_or_default() < max_for_header { 0 } else { 1 };
+        headers_len += if self.gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
+        headers_len += if self.value.unwrap_or_default() < max_for_header { 0 } else { 1 };
+
+        length += self.tx_body_length();
+
+        // if the chain_id is none we assume mainnet and choose one
+        length += self.chain_id.unwrap_or_else(U64::one).as_u64().length();
+        length += 0u64.length();
+        length += 0u64.length();
+        length += headers_len;
+
+        length
+    }
+
+    fn encode(&self, out: &mut dyn bytes::BufMut) {
+        // [nonce, gas-price, gas, to, value, data, chainid, 0, 0]
+        let encoding_len = self.length();
+        // have to implement header encoding rules for lists since the transaction will be encoded
+        // as a list
+        if encoding_len <= 55 {
+            let header = self.length() as u8 + 0xc0;
+            out.put_u8(header);
+        } else {
+            let len_of_len = length_of_length(encoding_len);
+            out.put_uint(encoding_len as u64, len_of_len);
+            out.put_u8(0xf7 + len_of_len as u8);
+        }
+
+        self.encode_tx_body(out);
+
+        // if the chain_id is none we assume mainnet and choose one
+        self.chain_id.unwrap_or_else(U64::one).as_u64().encode(out);
         0u64.encode(out);
         0u64.encode(out);
     }
@@ -685,19 +713,6 @@ mod tests {
 
     #[test]
     fn test_eip155_decode_fastrlp() {
-        //    /------------------------------------ 44 bytes
-        // ----------------------------------------\
-        // ec 098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080018080
-        //
-        // 0xc0 + length of list (44) = 0xec
-        // |                   0x80 + length of bytes str (2) = 0x82
-        // |                   |       0x80 + length of byte str (20) = 0x94       0x80 + length of
-        // byte str (8) = 0x88 |  nonce gas_price  |  gas  |  to
-        // |  value               chainid V  \/    \/         V  \/   V  \/
-        // V  \/                  \/ ec 09 85 04a817c800 82 5208 94
-        // 3535353535353535353535353535353535353535 88 0de0b6b3a7640000 80 01 80 80 <-empty (EIP155)
-        //
-        // ^data ^empty (EIP155)
         let expected_hex = hex::decode("ec098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080018080").unwrap();
 
         let tx = TransactionRequest::new()
