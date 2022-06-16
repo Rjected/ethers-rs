@@ -15,6 +15,30 @@ pub enum NameOrAddress {
 
 // Only RLP encode the Address variant since it doesn't make sense to ever RLP encode
 // an ENS name
+impl fastrlp::Encodable for NameOrAddress {
+    fn length(&self) -> usize {
+        match self {
+            // encoding doesn't make sense for ENS names, so let's return 0 as the length
+            Self::Name(_) => 0,
+            Self::Address(addr) => <Address as fastrlp::Encodable>::length(addr),
+        }
+    }
+    fn encode(&self, out: &mut dyn bytes::BufMut) {
+        if let NameOrAddress::Address(addr) = self {
+            <Address as fastrlp::Encodable>::encode(addr, out);
+        }
+    }
+}
+
+impl fastrlp::Decodable for NameOrAddress {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        let addr = <Address as fastrlp::Decodable>::decode(buf)?;
+        Ok(Self::Address(addr))
+    }
+}
+
+// Only RLP encode the Address variant since it doesn't make sense to ever RLP encode
+// an ENS name
 impl Encodable for &NameOrAddress {
     fn rlp_append(&self, s: &mut RlpStream) {
         if let NameOrAddress::Address(inner) = self {
@@ -138,6 +162,27 @@ mod tests {
         let name = NameOrAddress::decode(&data).unwrap();
 
         assert_eq!(name, expected);
+    }
+
+    #[test]
+    fn fastrlp_address_deserialized() {
+        let addr = "3dd6f334b732d23b51dfbee2070b40bbd1a97a8f".parse().unwrap();
+        let expected = NameOrAddress::Address(addr);
+        let mut rlp_bytes = vec![];
+        <NameOrAddress as fastrlp::Encodable>::encode(&expected, &mut rlp_bytes);
+
+        let decoded_addr =
+            <NameOrAddress as fastrlp::Decodable>::decode(&mut &rlp_bytes[..]).unwrap();
+        assert_eq!(decoded_addr, expected);
+    }
+
+    #[test]
+    fn fastrlp_name_not_serialized() {
+        let name = NameOrAddress::Name("ens.eth".to_string());
+        let mut rlp_bytes = vec![];
+        <NameOrAddress as fastrlp::Encodable>::encode(&name, &mut rlp_bytes);
+        let expected: Vec<u8> = vec![];
+        assert_eq!(rlp_bytes, expected);
     }
 
     #[test]

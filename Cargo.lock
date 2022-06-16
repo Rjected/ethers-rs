@@ -1490,6 +1490,7 @@ dependencies = [
  "arrayvec 0.7.2",
  "auto_impl",
  "bytes",
+ "ethereum-types",
  "fastrlp-derive",
 ]
 
