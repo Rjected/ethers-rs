@@ -4,6 +4,7 @@ use crate::types::{
 };
 use rlp::{Decodable, RlpStream};
 use rlp_derive::{RlpDecodable, RlpDecodableWrapper, RlpEncodable, RlpEncodableWrapper};
+use fastrlp::{RlpEncodable as FastRlpEncodable, RlpDecodable as FastRlpDecodable, RlpEncodableWrapper as FastRlpEncodableWrapper, RlpDecodableWrapper as FastRlpDecodableWrapper, length_of_length};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -22,6 +23,8 @@ const NUM_EIP2930_FIELDS: usize = 8;
     Deserialize,
     RlpEncodableWrapper,
     RlpDecodableWrapper,
+    FastRlpEncodableWrapper,
+    FastRlpDecodableWrapper
 )]
 pub struct AccessList(pub Vec<AccessListItem>);
 
@@ -51,7 +54,7 @@ impl TransactionRequest {
 
 /// Access list item
 #[derive(
-    Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable,
+    Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, RlpEncodable, RlpDecodable, FastRlpEncodable, FastRlpDecodable
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AccessListItem {
@@ -156,6 +159,74 @@ impl Eip2930TransactionRequest {
 impl Decodable for Eip2930TransactionRequest {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         Self::decode_base_rlp(rlp, &mut 0)
+    }
+}
+
+impl fastrlp::Encodable for Eip2930TransactionRequest {
+    fn length(&self) -> usize {
+        // add each of the fields' rlp encoded lengths
+        let mut length: usize = 0;
+        // the max value for a single byte to represent itself is 0x7f
+        let max_for_header = U256::from(0x7fu8);
+        // the number of rlp string headers - each U256 can be either a single byte (and is < 0x7f)
+        // or less than 32
+        let mut headers_len = 0;
+        headers_len += if self.tx.nonce.unwrap_or_default() < max_for_header { 0 } else { 1 };
+        headers_len += if self.tx.gas_price.unwrap_or_default() < max_for_header { 0 } else { 1 };
+        headers_len += if self.tx.gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
+        headers_len += if self.tx.value.unwrap_or_default() < max_for_header { 0 } else { 1 };
+
+        // if the chain_id is none we assume mainnet and choose one
+        length += self.tx.chain_id.unwrap_or_else(U64::one).as_u64().length();
+        length += self.tx.tx_body_length();
+        length += self.access_list.length();
+
+        length += headers_len;
+
+        length
+    }
+
+    fn encode(&self, out: &mut dyn bytes::BufMut) {
+        // [chainId, nonce, gasPrice, gasLimit, to, value, data, accessList]
+        let encoding_len = self.length();
+        // have to implement header encoding rules for lists since the transaction will be encoded
+        // as a list
+        if encoding_len <= 55 {
+            let header = self.length() as u8 + 0xc0;
+            out.put_u8(header);
+        } else {
+            let len_of_len = length_of_length(encoding_len);
+            out.put_uint(encoding_len as u64, len_of_len);
+            out.put_u8(0xf7 + len_of_len as u8);
+        }
+
+        self.tx.chain_id.unwrap_or_else(U64::one).as_u64().encode(out);
+        self.tx.encode_tx_body(out);
+        self.access_list.encode(out);
+    }
+}
+
+impl fastrlp::Decodable for Eip2930TransactionRequest {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        let list_header = *buf.first().ok_or(fastrlp::DecodeError::Custom(
+            "Cannot decode a transaction from an empty list",
+        ))?;
+
+        // slice out the rlp list header
+        *buf = if list_header <= 0xf7 {
+            &buf[1..]
+        } else {
+            let len_of_len = list_header as usize - 0xf7;
+            &buf[1 + len_of_len..]
+        };
+
+        let chain_id = <bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into();
+        let mut request = TransactionRequest::decode_tx_body(buf)?;
+        request.chain_id = Some(chain_id);
+        Ok(Self {
+            tx: request,
+            access_list: <AccessList as fastrlp::Decodable>::decode(buf)?,
+        })
     }
 }
 

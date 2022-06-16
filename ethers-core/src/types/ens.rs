@@ -25,7 +25,11 @@ impl fastrlp::Encodable for NameOrAddress {
     }
     fn encode(&self, out: &mut dyn bytes::BufMut) {
         if let NameOrAddress::Address(addr) = self {
-            <Address as fastrlp::Encodable>::encode(addr, out);
+            if *addr == Address::zero() {
+                out.put_u8(0x80);
+            } else {
+                <Address as fastrlp::Encodable>::encode(addr, out);
+            }
         }
     }
 }

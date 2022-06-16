@@ -375,6 +375,30 @@ impl Decodable for TypedTransaction {
     }
 }
 
+/// Decode a TypedTransaction from raw bytes
+impl fastrlp::Decodable for TypedTransaction {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        // first strip off the
+        println!("typed tx buf: {:X?}", buf);
+        let tx_type = buf.first();
+        match tx_type {
+            Some(&x) if x == 0x01u8 => {
+                // EIP-2930 (0x01)
+                Ok(Self::Eip2930(<Eip2930TransactionRequest as fastrlp::Decodable>::decode(&mut &buf[1..])?))
+            }
+            Some(&x) if x == 0x02u8 => {
+                // EIP-1559 (0x02)
+                Ok(Self::Eip1559(<Eip1559TransactionRequest as fastrlp::Decodable>::decode(&mut &buf[1..])?))
+            }
+            _ => {
+                // Legacy (0x00)
+                // use the original rlp
+                Ok(Self::Legacy(<TransactionRequest as fastrlp::Decodable>::decode(buf)?))
+            }
+        }
+    }
+}
+
 impl From<TransactionRequest> for TypedTransaction {
     fn from(src: TransactionRequest) -> TypedTransaction {
         TypedTransaction::Legacy(src)
@@ -658,6 +682,19 @@ mod tests {
     }
 
     #[test]
+    fn test_typed_tx_decode_fastrlp() {
+        // this is the same transaction as the above test
+        let typed_tx_hex = hex::decode("02f86b8205390284773594008477359400830186a09496216849c49358b10257cb55b28ea603c874b05e865af3107a4000825544f838f7940000000000000000000000000000000000000001e1a00100000000000000000000000000000000000000000000000000000000000000").unwrap();
+        let actual_tx = <TypedTransaction as fastrlp::Decodable>::decode(&mut &typed_tx_hex[..]).unwrap();
+
+        let expected =
+            H256::from_str("0x090b19818d9d087a49c3d2ecee4829ee4acea46089c1381ac5e588188627466d")
+                .unwrap();
+        let actual = actual_tx.sighash();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
     fn test_signed_tx_decode() {
         let expected_tx = Eip1559TransactionRequest::new()
             .from(Address::from_str("0x1acadd971da208d25122b645b2ef879868a83e21").unwrap())
@@ -705,12 +742,35 @@ mod tests {
         assert_eq!(tx.sighash(), decoded_transaction.sighash());
     }
 
+    #[cfg(not(feature = "celo"))]
+    #[test]
+    fn test_eip155_decode_fastrlp() {
+        let tx = TransactionRequest::new()
+            .nonce(9)
+            .to("3535353535353535353535353535353535353535".parse::<Address>().unwrap())
+            .value(1000000000000000000u64)
+            .gas_price(20000000000u64)
+            .gas(21000)
+            .chain_id(1);
+
+        let expected_hex = hex::decode("ec098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a764000080018080").unwrap();
+        let decoded_transaction = <TypedTransaction as fastrlp::Decodable>::decode(&mut &expected_hex[..]).unwrap();
+        assert_eq!(tx.sighash(), decoded_transaction.sighash());
+    }
+
     #[test]
     fn test_eip1559_deploy_tx_decode() {
         let typed_tx_hex =
             hex::decode("02dc8205058193849502f90085010c388d00837a120080808411223344c0").unwrap();
         let tx_rlp = rlp::Rlp::new(typed_tx_hex.as_slice());
         TypedTransaction::decode(&tx_rlp).unwrap();
+    }
+
+    #[test]
+    fn test_eip1559_deploy_tx_decode_fastrlp() {
+        let typed_tx_hex =
+            hex::decode("02dc8205058193849502f90085010c388d00837a120080808411223344c0").unwrap();
+        <TypedTransaction as fastrlp::Decodable>::decode(&mut &typed_tx_hex[..]).unwrap();
     }
 
     #[test]
