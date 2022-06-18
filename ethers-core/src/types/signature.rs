@@ -4,6 +4,7 @@ use crate::{
     utils::hash_message,
 };
 
+use fastrlp::Decodable;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr};
 
@@ -140,6 +141,19 @@ impl Signature {
     #[allow(clippy::wrong_self_convention)]
     pub fn to_vec(&self) -> Vec<u8> {
         self.into()
+    }
+
+    /// Decodes a signature from RLP bytes
+    pub(crate) fn decode_signature(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        // This is not a standalone Decodable implementation because signatures are typically only
+        // decoded within other structs, rather than on their own.
+        // A Decodable implementation would need to decode a list header, then decode the signature
+        // fields rather than just decoding fields as we do here.
+        Ok(Self {
+            r: bytes::Bytes::decode(buf)?[..].into(),
+            s: bytes::Bytes::decode(buf)?[..].into(),
+            v: u64::decode(buf)?,
+        })
     }
 }
 
