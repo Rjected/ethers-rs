@@ -1,8 +1,6 @@
-use rlp::{Encodable, Decodable};
+use fastrlp::{Encodable, Decodable};
 use serde::{Deserialize, Serialize};
-
 use crate::types::Signature;
-
 use super::eip2718::TypedTransaction;
 
 /// Signed tranaction requests are represented by the SignedTransactionRequest struct.
@@ -19,17 +17,17 @@ pub struct SignedTransactionRequest {
     sig: Signature,
 }
 
-// impl Encodable for SignedTransactionRequest {
-//     fn rlp_bytes(&self) -> bytes::BytesMut {
+impl Encodable for SignedTransactionRequest {
+    fn length(&self) -> usize {
+        todo!()
+    }
+    fn encode(&self, out: &mut dyn bytes::BufMut) {
+        todo!()
+    }
+}
 
-//     }
-//     fn rlp_append(&self, s: &mut rlp::RlpStream) {
-
-//     }
-// }
-
-// impl Decodable for SignedTransactionRequest {
-//     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-
-//     }
-// }
+impl Decodable for SignedTransactionRequest {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        todo!()
+    }
+}
