@@ -1,7 +1,7 @@
 use ethabi::ethereum_types::U256;
 use fastrlp::{Encodable, Decodable, length_of_length, Header};
 use serde::{Deserialize, Serialize};
-use crate::types::Signature;
+use crate::types::{Signature, TransactionRequest, Eip1559TransactionRequest, Eip2930TransactionRequest};
 use super::eip2718::TypedTransaction;
 
 /// Signed tranaction requests are represented by the SignedTransactionRequest struct.
@@ -95,6 +95,30 @@ impl Encodable for SignedTransactionRequest {
 
 impl Decodable for SignedTransactionRequest {
     fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        let _header = Header::decode(buf)?;
+
+        let tx_type = buf.first();
+        let tx = match tx_type {
+            Some(&x) if x == 0x01u8 => {
+                // EIP-2930 (0x01)
+                let request = Eip2930TransactionRequest::decode_tx_body(buf)?;
+                TypedTransaction::Eip2930(request);
+            }
+            Some(&x) if x == 0x02u8 => {
+                // EIP-1559 (0x02)
+                let request = Eip1559TransactionRequest::decode_tx_body(buf)?;
+                TypedTransaction::Eip1559(request);
+            }
+            _ => {
+                // Legacy (0x00)
+                // use the original rlp
+                let request = TransactionRequest::decode_tx_body(buf)?;
+                TypedTransaction::Legacy(request);
+            }
+        }
+
+        // TODO: decode signature body
+        // TODO: revise decode impls and comments
         todo!()
     }
 }
