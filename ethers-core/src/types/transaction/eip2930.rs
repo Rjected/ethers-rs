@@ -168,8 +168,9 @@ impl Eip2930TransactionRequest {
         Ok((txn, sig))
     }
 
-    /// Returns the length of the TransactionReceipt's fields in RLP
-    pub(crate) fn payload_length(&self) -> usize {
+    /// Returns the rlp length of the TransactionRequest body, not including the rlp list header.
+    /// To get the length including the rlp list header, refer to the Encodable implementation.
+    pub(crate) fn tx_body_length(&self) -> usize {
         // add each of the fields' rlp encoded lengths
         let mut length = 0;
         // the max value for a single byte to represent itself is 0x7f
@@ -191,6 +192,21 @@ impl Eip2930TransactionRequest {
 
         length
     }
+
+    /// Encodes the Eip2930TransactionRequest body to RLP bytes, not including the rlp list header.
+    pub(crate) fn encode_tx_body(&self, out: &mut dyn bytes::BufMut) {
+        self.tx.chain_id.unwrap_or_else(U64::one).as_u64().encode(out);
+        self.tx.encode_tx_body(out);
+        self.access_list.encode(out);
+    }
+
+    /// Decodes the Eip1559TransactionRequest body, assuming there is no rlp list header.
+    pub(crate) fn decode_tx_body(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        let chain_id = <bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into();
+        let mut request = TransactionRequest::decode_tx_body(buf)?;
+        request.chain_id = Some(chain_id);
+        Ok(Self { tx: request, access_list: <AccessList as fastrlp::Decodable>::decode(buf)? })
+    }
 }
 
 /// Get a Eip2930TransactionRequest from a rlp encoded byte stream
@@ -204,7 +220,7 @@ impl fastrlp::Encodable for Eip2930TransactionRequest {
     fn length(&self) -> usize {
         // add each of the fields' rlp encoded lengths
         let mut length = 0;
-        length += self.payload_length();
+        length += self.tx_body_length();
 
         // header would encode length_of_length + 1 bytes
         length += if length > 55 { 1 + length_of_length(length) } else { 1 };
@@ -214,12 +230,10 @@ impl fastrlp::Encodable for Eip2930TransactionRequest {
 
     fn encode(&self, out: &mut dyn bytes::BufMut) {
         // [chainId, nonce, gasPrice, gasLimit, to, value, data, accessList]
-        let header = Header { list: true, payload_length: self.payload_length() };
+        let header = Header { list: true, payload_length: self.tx_body_length() };
         header.encode(out);
 
-        self.tx.chain_id.unwrap_or_else(U64::one).as_u64().encode(out);
-        self.tx.encode_tx_body(out);
-        self.access_list.encode(out);
+        self.encode_tx_body(out);
     }
 }
 
@@ -231,11 +245,7 @@ impl fastrlp::Decodable for Eip2930TransactionRequest {
 
         // slice out the rlp list header
         let _header = Header::decode(buf)?;
-
-        let chain_id = <bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into();
-        let mut request = TransactionRequest::decode_tx_body(buf)?;
-        request.chain_id = Some(chain_id);
-        Ok(Self { tx: request, access_list: <AccessList as fastrlp::Decodable>::decode(buf)? })
+        Self::decode_tx_body(buf)
     }
 }
 

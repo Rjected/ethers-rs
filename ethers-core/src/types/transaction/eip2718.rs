@@ -86,7 +86,6 @@ impl TypedTransaction {
             Eip1559(inner) => inner.from.as_ref(),
         }
     }
-
     pub fn set_from(&mut self, from: Address) {
         match self {
             Legacy(inner) => inner.from = Some(from),

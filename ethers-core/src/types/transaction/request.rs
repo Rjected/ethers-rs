@@ -282,7 +282,24 @@ impl TransactionRequest {
         Ok((txn, sig))
     }
 
-    /// Encodes the fields of the TransactionRequest into the input BufMut
+    /// Returns the rlp length of the TransactionRequest body, _including_ trailing EIP155 fields,
+    /// but not including the rlp list header.
+    /// To get the length including the rlp list header, refer to the Encodable implementation.
+    pub(crate) fn tx_payload_length(&self) -> usize {
+        // add each of the fields' rlp encoded lengths
+        let mut length = 0;
+        length += self.tx_body_length();
+
+        // if the chain_id is none we assume mainnet and choose one
+        length += self.chain_id.unwrap_or_else(U64::one).as_u64().length();
+        length += 0u64.length();
+        length += 0u64.length();
+
+        length
+    }
+
+    /// Encodes the TransactionRequest body to RLP bytes, _not including_ trailing EIP155 fields
+    /// or the rlp list header
     pub(crate) fn encode_tx_body(&self, out: &mut dyn bytes::BufMut) {
         let mut uint_container = [0x00; 32];
         let nonce = self.nonce.unwrap_or_default();
@@ -313,7 +330,7 @@ impl TransactionRequest {
     }
 
     /// Returns the rlp length of the TransactionRequest body, _not including_ trailing EIP155
-    /// fields, or the rlp list header
+    /// fields or the rlp list header
     /// To get the length including the rlp list header, refer to the Encodable implementation.
     pub(crate) fn tx_body_length(&self) -> usize {
         // add each of the fields' rlp encoded lengths
@@ -341,22 +358,6 @@ impl TransactionRequest {
 
         length += self.data.to_owned().unwrap_or_default().0.length();
         length += headers_len;
-
-        length
-    }
-
-    /// Returns the rlp length of the TransactionRequest body, _including_ trailing EIP155 fields,
-    /// but not including the rlp list header.
-    /// To get the length including the rlp list header, refer to the Encodable implementation.
-    pub(crate) fn tx_payload_length(&self) -> usize {
-        // add each of the fields' rlp encoded lengths
-        let mut length = 0;
-        length += self.tx_body_length();
-
-        // if the chain_id is none we assume mainnet and choose one
-        length += self.chain_id.unwrap_or_else(U64::one).as_u64().length();
-        length += 0u64.length();
-        length += 0u64.length();
 
         length
     }
