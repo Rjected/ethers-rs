@@ -3,6 +3,7 @@ use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, U256, U64};
 use chrono::{DateTime, TimeZone, Utc};
 #[cfg(not(feature = "celo"))]
 use core::cmp::Ordering;
+use fastrlp::{length_of_length, Decodable, Encodable};
 
 use serde::{
     de::{MapAccess, Visitor},
@@ -11,6 +12,8 @@ use serde::{
 };
 use std::{fmt, fmt::Formatter, str::FromStr};
 use thiserror::Error;
+
+use super::transaction::eip2718::TypedTransaction;
 
 /// The block type returned from RPC calls.
 /// This is generic over a `TX` type which will be either the hash or the full transaction,
@@ -178,6 +181,49 @@ impl<TX> Block<TX> {
         // TODO: It would be nice if there was `TryInto<i64> for U256`.
         let secs = self.timestamp.as_u64() as i64;
         Ok(Utc.timestamp(secs, 0))
+    }
+
+    /// Returns the rlp length of the block header, not including the length of the rlp list
+    /// header.
+    pub(crate) fn header_payload_length(&self) -> usize {
+        let mut length = 0;
+        length += self.parent_hash.length();
+        length += self.uncles_hash.length();
+        length += self.author.unwrap_or_default().length();
+        length += self.state_root.length();
+        length += self.transactions_root.length();
+        length += self.receipts_root.length();
+        length += self.logs_bloom.unwrap_or_default().length();
+
+        // the max value for a single byte to represent itself is 0x7f
+        let max_for_header = U256::from(0x7fu8);
+        // the number of rlp string headers - each U256 can be either a single byte (and is < 0x7f)
+        // or less than 32
+        let mut headers_len = 0;
+        headers_len += if self.difficulty < max_for_header { 0 } else { 1 };
+        length += 32 - self.difficulty.leading_zeros() as usize / 8;
+
+        length += self.number.unwrap_or_default().as_u64().length();
+
+        headers_len += if self.gas_limit < max_for_header { 0 } else { 1 };
+        length += 32 - self.gas_limit.leading_zeros() as usize / 8;
+
+        headers_len += if self.gas_used < max_for_header { 0 } else { 1 };
+        length += 32 - self.gas_used.leading_zeros() as usize / 8;
+
+        headers_len += if self.timestamp < max_for_header { 0 } else { 1 };
+        length += 32 - self.timestamp.leading_zeros() as usize / 8;
+
+        length += self.extra_data.0.length();
+        length += self.mix_hash.unwrap_or_default().length();
+        length += self.nonce.unwrap_or_default().as_u64().length();
+
+        headers_len +=
+            if self.base_fee_per_gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
+        length += 32 - self.base_fee_per_gas.unwrap_or_default().leading_zeros() as usize / 8;
+
+        length += headers_len;
+        length
     }
 }
 
@@ -622,6 +668,52 @@ impl fmt::Display for BlockNumber {
 impl Default for BlockNumber {
     fn default() -> Self {
         BlockNumber::Latest
+    }
+}
+
+/// Encode a block containing full transactions as RLP bytes
+impl Encodable for Block<TypedTransaction> {
+    fn length(&self) -> usize {
+        let mut length = 0;
+        let header_len = self.header_payload_length();
+        length += header_len;
+        length += if header_len > 55 { 1 + length_of_length(header_len) } else { 1 };
+
+        length += self.transactions.length();
+        unimplemented!()
+    }
+    fn encode(&self, out: &mut dyn bytes::BufMut) {
+        // block = [header, transactions, ommers]
+        // transactions = [tx1, tx2, ...]
+        // ommers = [header1, header2, ...]
+        // header = [
+        //     parent-hash: B_32,
+        //     ommers-hash: B_32,
+        //     coinbase: B_20,
+        //     state-root: B_32,
+        //     txs-root: B_32,
+        //     receipts-root: B_32,
+        //     bloom: B_256,
+        //     difficulty: P,
+        //     number: P,
+        //     gas-limit: P,
+        //     gas-used: P,
+        //     time: P,
+        //     extradata: B,
+        //     mix-digest: B_32,
+        //     block-nonce: B_8,
+        //     basefee-per-gas: P,
+        // ]
+        // TODO: a type for headers, maybe check anvil?
+        // TODO: a field for uncles that is not H256 - also check anvil for a block type.
+        unimplemented!()
+    }
+}
+
+/// Decode a block containing full transactions from RLP bytes
+impl Decodable for Block<TypedTransaction> {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        todo!()
     }
 }
 
