@@ -1,4 +1,5 @@
 // Adapted from https://github.com/tomusdrw/rust-web3/blob/master/src/types/log.rs
+use fastrlp::{Header, Decodable, Encodable, length_of_length};
 use crate::types::{Address, Bytes, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 
@@ -69,3 +70,75 @@ impl rlp::Encodable for Log {
 }
 
 // TODO: Implement more common types - or adjust this to work with all Tokenizable items
+impl Log {
+    /// Returns the rlp length of the Log body, _including_ trailing EIP155 fields,
+    /// but not including the rlp list header.
+    /// To get the length including the rlp list header, refer to the Encodable implementation.
+    pub(crate) fn log_payload_length(&self) -> usize {
+        let mut length = 0;
+        length += if self.address == Address::zero() { 1 } else { self.address.length() };
+        length += self.topics.length();
+        length += self.data.0.length();
+        length
+    }
+}
+
+impl Encodable for Log {
+    fn length(&self) -> usize {
+        // add each of the fields' rlp encoded lengths
+        let mut length = 0;
+        length += self.log_payload_length();
+
+        // header would encode length_of_length + 1 bytes
+        length += if length > 55 { 1 + length_of_length(length) } else { 1 };
+
+        length
+    }
+    fn encode(&self, out: &mut dyn bytes::BufMut) {
+        // [contract-address, topics, data]
+        let list_header = Header { list: true, payload_length: self.log_payload_length() };
+        list_header.encode(out);
+
+        if self.address == Address::zero() {
+            out.put_u8(0x80);
+        } else {
+            self.address.encode(out);
+        }
+        self.data.0.encode(out);
+    }
+}
+
+impl Decodable for Log {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        let list_header = *buf
+            .first()
+            .ok_or(fastrlp::DecodeError::Custom("Cannot decode a log from empty bytes"))?;
+
+        let _header =
+        // slice out the rlp list header
+        *buf = if list_header <= 0xf7 {
+            &buf[1..]
+        } else {
+            let len_of_len = list_header as usize - 0xf7;
+            &buf[1 + len_of_len..]
+        };
+
+        let mut log = Log::default();
+
+        let first = *buf
+            .first()
+            .ok_or(fastrlp::DecodeError::Custom("Cannot decode an address from an empty list"))?;
+        // 0x0 is encoded as an empty rlp list, 0x80
+        log.address = if first == 0x80u8 {
+            // consume the empty list
+            *buf = &buf[1..];
+            Address::zero()
+        } else {
+            Address::decode(buf)?
+        };
+
+        log.topics = Vec::<H256>::decode(buf)?;
+        log.data.0 = bytes::Bytes::decode(buf)?;
+        Ok(log)
+    }
+}
