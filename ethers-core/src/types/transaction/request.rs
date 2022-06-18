@@ -304,17 +304,17 @@ impl TransactionRequest {
         let mut uint_container = [0x00; 32];
         let nonce = self.nonce.unwrap_or_default();
         nonce.to_big_endian(&mut uint_container[..]);
-        let nonce_bytes = &uint_container[31 - nonce.bits() as usize / 8..];
+        let nonce_bytes = &uint_container[nonce.leading_zeros() as usize / 8..];
         nonce_bytes.encode(out);
 
         let gas_price = self.gas_price.unwrap_or_default();
         gas_price.to_big_endian(&mut uint_container[..]);
-        let gas_price_bytes = &uint_container[31 - gas_price.bits() as usize / 8..];
+        let gas_price_bytes = &uint_container[gas_price.leading_zeros() as usize / 8..];
         gas_price_bytes.encode(out);
 
         let gas = self.gas.unwrap_or_default();
         gas.to_big_endian(&mut uint_container[..]);
-        let gas_bytes = &uint_container[31 - gas.bits() as usize / 8..];
+        let gas_bytes = &uint_container[gas.leading_zeros() as usize / 8..];
         gas_bytes.encode(out);
 
         let to_addr =
@@ -323,7 +323,7 @@ impl TransactionRequest {
 
         let value = self.value.unwrap_or_default();
         value.to_big_endian(&mut uint_container[..]);
-        let value_bytes = &uint_container[31 - value.bits() as usize / 8..];
+        let value_bytes = &uint_container[value.leading_zeros() as usize / 8..];
         value_bytes.encode(out);
 
         self.data.to_owned().unwrap_or_default().0.encode(out);
