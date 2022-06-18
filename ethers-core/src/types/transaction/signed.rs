@@ -27,10 +27,10 @@ impl SignedTransactionRequest {
         length += match &self.tx {
             TypedTransaction::Eip1559(tx) => {
                 // it says including but really
-                tx.tx_payload_length()
+                tx.tx_body_length()
             }
             TypedTransaction::Eip2930(tx) => {
-                tx.payload_length()
+                tx.tx_body_length()
             }
             TypedTransaction::Legacy(tx) => {
                 tx.tx_body_length()
@@ -68,10 +68,28 @@ impl Encodable for SignedTransactionRequest {
         let list_header = Header { list: true, payload_length: self.signed_tx_payload_length() };
         list_header.encode(out);
 
+        match &self.tx {
+            TypedTransaction::Eip1559(tx) => {
+                tx.encode_tx_body(out)
+            }
+            TypedTransaction::Eip2930(tx) => {
+                tx.encode_tx_body(out)
+            }
+            TypedTransaction::Legacy(tx) => {
+                tx.encode_tx_body(out)
+            }
+        }
+
+        self.sig.v.encode(out);
         let mut uint_container = [0x00; 32];
-        // TODO: need to make sure every tx type has encode_tx_body and the same name for all
-        // methods
-        todo!()
+
+        self.sig.r.to_big_endian(&mut uint_container);
+        let r_bytes = &uint_container[self.sig.r.leading_zeros() as usize / 8..];
+        r_bytes.encode(out);
+
+        self.sig.s.to_big_endian(&mut uint_container);
+        let s_bytes = &uint_container[self.sig.s.leading_zeros() as usize / 8..];
+        s_bytes.encode(out);
     }
 }
 
