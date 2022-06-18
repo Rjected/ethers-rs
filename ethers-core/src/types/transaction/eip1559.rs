@@ -240,10 +240,10 @@ impl Eip1559TransactionRequest {
         Ok((txn, sig))
     }
 
-    /// Returns the rlp length of the Eip1559TransactionRequest body, _including_ trailing EIP155
-    /// fields, but not including the rlp list header.
+    /// Returns the rlp length of the Eip1559TransactionRequest body, not including the rlp list
+    /// header.
     /// To get the length including the rlp list header, refer to the Encodable implementation.
-    pub(crate) fn tx_payload_length(&self) -> usize {
+    pub(crate) fn tx_body_length(&self) -> usize {
         // add each of the fields' rlp encoded lengths
         let mut length = 0;
         // the max value for a single byte to represent itself is 0x7f
@@ -281,76 +281,9 @@ impl Eip1559TransactionRequest {
 
         length
     }
-}
 
-impl Decodable for Eip1559TransactionRequest {
-    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        Self::decode_base_rlp(rlp, &mut 0)
-    }
-}
-
-impl fastrlp::Decodable for Eip1559TransactionRequest {
-    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
-        // [chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination,
-        // amount, data, access_list]
-        buf.first().ok_or(fastrlp::DecodeError::Custom(
-            "Cannot decode an EIP1559 transaction from empty bytes",
-        ))?;
-
-        // slice out the rlp list header
-        let _header = Header::decode(buf)?;
-
-        let mut request = Eip1559TransactionRequest::default();
-        request.chain_id = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-
-        request.nonce = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-        request.max_priority_fee_per_gas =
-            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-        request.max_fee_per_gas =
-            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-        request.gas = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-
-        let first = *buf
-            .first()
-            .ok_or(fastrlp::DecodeError::Custom("Cannot decode an address from empty bytes"))?;
-        // 0x0 is encoded as an empty rlp list, 0x80
-        request.to = if first == 0x80u8 {
-            // consume the empty list
-            buf.advance(1);
-            None
-        } else {
-            Some(<NameOrAddress as fastrlp::Decodable>::decode(buf)?)
-        };
-        request.value = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-
-        let decoded_data = <bytes::Bytes as fastrlp::Decodable>::decode(buf)?;
-        request.data = match decoded_data.len() {
-            0 => None,
-            _ => Some(Bytes(decoded_data)),
-        };
-
-        request.access_list = <AccessList as fastrlp::Decodable>::decode(buf)?;
-        Ok(request)
-    }
-}
-
-impl fastrlp::Encodable for Eip1559TransactionRequest {
-    fn length(&self) -> usize {
-        // add each of the fields' rlp encoded lengths
-        let mut length = 0;
-        length += self.tx_payload_length();
-
-        // header would encode length_of_length + 1 bytes
-        length += if length > 55 { 1 + length_of_length(length) } else { 1 };
-
-        length
-    }
-
-    fn encode(&self, out: &mut dyn bytes::BufMut) {
-        // [chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination,
-        // amount, data, access_list]
-        let list_header = Header { list: true, payload_length: self.tx_payload_length() };
-        list_header.encode(out);
+    /// Encodes the Eip1559TransactionRequest body to RLP bytes, not including the rlp list header.
+    pub(crate) fn encode_tx_body(&self, out: &mut dyn bytes::BufMut) {
         let mut uint_container = [0x00; 32];
 
         // if the chain_id is none we assume mainnet and choose one
@@ -389,6 +322,83 @@ impl fastrlp::Encodable for Eip1559TransactionRequest {
         self.data.to_owned().unwrap_or_default().0.encode(out);
 
         self.access_list.encode(out);
+    }
+
+    /// Decodes the Eip1559TransactionRequest body, assuming there is no rlp list header.
+    pub(crate) fn decode_tx_body(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        let mut request = Eip1559TransactionRequest::default();
+        request.chain_id = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+
+        request.nonce = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+        request.max_priority_fee_per_gas =
+            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+        request.max_fee_per_gas =
+            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+        request.gas = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+
+        let first = *buf
+            .first()
+            .ok_or(fastrlp::DecodeError::Custom("Cannot decode an address from empty bytes"))?;
+        // 0x0 is encoded as an empty rlp list, 0x80
+        request.to = if first == 0x80u8 {
+            // consume the empty list
+            buf.advance(1);
+            None
+        } else {
+            Some(<NameOrAddress as fastrlp::Decodable>::decode(buf)?)
+        };
+        request.value = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+
+        let decoded_data = <bytes::Bytes as fastrlp::Decodable>::decode(buf)?;
+        request.data = match decoded_data.len() {
+            0 => None,
+            _ => Some(Bytes(decoded_data)),
+        };
+
+        request.access_list = <AccessList as fastrlp::Decodable>::decode(buf)?;
+        Ok(request)
+    }
+}
+
+impl Decodable for Eip1559TransactionRequest {
+    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
+        Self::decode_base_rlp(rlp, &mut 0)
+    }
+}
+
+impl fastrlp::Decodable for Eip1559TransactionRequest {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        // [chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination,
+        // amount, data, access_list]
+        buf.first().ok_or(fastrlp::DecodeError::Custom(
+            "Cannot decode an EIP1559 transaction from empty bytes",
+        ))?;
+
+        // slice out the rlp list header
+        let _header = Header::decode(buf)?;
+
+        Self::decode_tx_body(buf)
+    }
+}
+
+impl fastrlp::Encodable for Eip1559TransactionRequest {
+    fn length(&self) -> usize {
+        // add each of the fields' rlp encoded lengths
+        let mut length = 0;
+        length += self.tx_body_length();
+
+        // header would encode length_of_length + 1 bytes
+        length += if length > 55 { 1 + length_of_length(length) } else { 1 };
+
+        length
+    }
+
+    fn encode(&self, out: &mut dyn bytes::BufMut) {
+        // [chain_id, nonce, max_priority_fee_per_gas, max_fee_per_gas, gas_limit, destination,
+        // amount, data, access_list]
+        let list_header = Header { list: true, payload_length: self.tx_body_length() };
+        list_header.encode(out);
+        self.encode_tx_body(out);
     }
 }
 
