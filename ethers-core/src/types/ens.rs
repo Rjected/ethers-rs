@@ -20,7 +20,13 @@ impl fastrlp::Encodable for NameOrAddress {
         match self {
             // encoding doesn't make sense for ENS names, so let's return 0 as the length
             Self::Name(_) => 0,
-            Self::Address(addr) => <Address as fastrlp::Encodable>::length(addr),
+            Self::Address(addr) => {
+                if *addr == Address::zero() {
+                    1
+                } else {
+                    <Address as fastrlp::Encodable>::length(addr)
+                }
+            }
         }
     }
     fn encode(&self, out: &mut dyn bytes::BufMut) {
