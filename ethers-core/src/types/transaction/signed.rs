@@ -102,23 +102,29 @@ impl Decodable for SignedTransactionRequest {
             Some(&x) if x == 0x01u8 => {
                 // EIP-2930 (0x01)
                 let request = Eip2930TransactionRequest::decode_tx_body(buf)?;
-                TypedTransaction::Eip2930(request);
+                TypedTransaction::Eip2930(request)
             }
             Some(&x) if x == 0x02u8 => {
                 // EIP-1559 (0x02)
                 let request = Eip1559TransactionRequest::decode_tx_body(buf)?;
-                TypedTransaction::Eip1559(request);
+                TypedTransaction::Eip1559(request)
             }
             _ => {
                 // Legacy (0x00)
                 // use the original rlp
                 let request = TransactionRequest::decode_tx_body(buf)?;
-                TypedTransaction::Legacy(request);
+                TypedTransaction::Legacy(request)
             }
-        }
+        };
 
-        // TODO: decode signature body
-        // TODO: revise decode impls and comments
-        todo!()
+        let sig = Signature::decode_signature(buf)?;
+
+        Ok(Self {
+            tx,
+            sig,
+        })
     }
 }
+
+// TODO: revise decode impls and comments
+// TODO: tests
