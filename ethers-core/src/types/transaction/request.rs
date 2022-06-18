@@ -337,7 +337,7 @@ impl TransactionRequest {
         let mut length = 0;
 
         // the max value for a single byte to represent itself is 0x7f
-        let max_for_header = U256::from(0x7fu8);
+        let max_for_header = U256::from(fastrlp::EMPTY_STRING_CODE);
         // the number of rlp string headers - each U256 can be either a single byte (and is < 0x7f)
         // or less than 32
         let mut headers_len = 0;
