@@ -7,6 +7,7 @@ use crate::{
     types::{Address, Bloom, Bytes, Log, Signature, SignatureError, H256, U256, U64},
     utils::keccak256,
 };
+use fastrlp::{length_of_length, Encodable, Header};
 use rlp::{Decodable, DecoderError, RlpStream};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -454,6 +455,74 @@ impl Ord for TransactionReceipt {
 impl PartialOrd<Self> for TransactionReceipt {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl TransactionReceipt {
+    /// Returns the length of the TransactionReceipt's fields in RLP
+    fn payload_length(&self) -> usize {
+        let mut length: usize = 0;
+
+        length += if let Some(root) = self.root {
+            root.length()
+        } else if let Some(status) = self.status {
+            status.as_u64().length()
+        } else {
+            0
+        };
+
+        // add the length of the header for the cumulativeGasUsed if it has one
+        length += if self.cumulative_gas_used < U256::from(0x7fu8) { 0 } else { 1 };
+        length += 32 - self.cumulative_gas_used.leading_zeros() as usize / 8;
+
+        length += self.logs_bloom.length();
+        length += self.logs.length();
+
+        length
+    }
+}
+
+impl fastrlp::Encodable for TransactionReceipt {
+    /// The length of the TransactionReceipt when encoded as RLP bytes
+    fn length(&self) -> usize {
+        let mut length = 0;
+        length += self.payload_length();
+
+        // header would encode length_of_length + 1 bytes
+        length += if length > 55 { 1 + length_of_length(length) } else { 1 };
+
+        length
+    }
+
+    fn encode(&self, out: &mut dyn bytes::BufMut) {
+        // status = {post-state-root, {0, 1}}
+        // [status, cumulativeGasUsed, logsBloom, logs]
+        let list_header = Header { list: true, payload_length: self.payload_length() };
+        list_header.encode(out);
+
+        if let Some(root) = self.root {
+            root.encode(out);
+        } else if let Some(status) = self.status {
+            status.as_u64().encode(out);
+        }
+
+        let mut uint_container = [0x00; 32];
+        self.cumulative_gas_used.to_big_endian(&mut uint_container[..]);
+        let cumulative_gas_used_bytes =
+            &uint_container[self.cumulative_gas_used.leading_zeros() as usize / 8..];
+        cumulative_gas_used_bytes.encode(out);
+
+        self.logs_bloom.encode(out);
+        self.logs.encode(out);
+    }
+}
+
+impl fastrlp::Decodable for TransactionReceipt {
+    fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
+        // status = {post-state-root, {0, 1}}
+        // [status, cumulativeGasUsed, logsBloom, logs]
+
+        todo!()
     }
 }
 
