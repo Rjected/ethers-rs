@@ -1,5 +1,6 @@
 pub mod request;
 pub mod response;
+pub mod signed;
 
 pub mod eip1559;
 pub mod eip2718;
