@@ -466,7 +466,7 @@ impl TransactionReceipt {
         length += if let Some(root) = self.root {
             root.length()
         } else if let Some(status) = self.status {
-            status.as_u64().length()
+            status.length()
         } else {
             0
         };
@@ -501,7 +501,7 @@ impl fastrlp::Encodable for TransactionReceipt {
         if let Some(root) = self.root {
             root.encode(out);
         } else if let Some(status) = self.status {
-            status.as_u64().encode(out);
+            status.encode(out);
         }
 
         self.cumulative_gas_used.encode(out);
