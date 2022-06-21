@@ -145,13 +145,13 @@ impl Signature {
 
     /// Decodes a signature from RLP bytes, assuming no RLP header
     pub(crate) fn decode_signature(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
-        // This is not a standalone Decodable implementation because signatures are typically only
-        // decoded within other structs, rather than on their own.
+        // This is not a standalone Decodable implementation because signatures are often decoded
+        // within other structs, rather than on their own.
         // A Decodable implementation would need to decode a list header, then decode the signature
         // fields rather than just decoding fields as we do here.
         Ok(Self {
-            r: bytes::Bytes::decode(buf)?[..].into(),
-            s: bytes::Bytes::decode(buf)?[..].into(),
+            r: U256::decode(buf)?,
+            s: U256::decode(buf)?,
             v: u64::decode(buf)?,
         })
     }

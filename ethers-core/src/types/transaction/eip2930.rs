@@ -173,36 +173,25 @@ impl Eip2930TransactionRequest {
     pub(crate) fn tx_body_length(&self) -> usize {
         // add each of the fields' rlp encoded lengths
         let mut length = 0;
-        // the max value for a single byte to represent itself is 0x7f
-        let max_for_header = U256::from(fastrlp::EMPTY_STRING_CODE);
-        // the number of rlp string headers - each U256 can be either a single byte (and is < 0x7f)
-        // or less than 32
-        let mut headers_len = 0;
-        headers_len += if self.tx.nonce.unwrap_or_default() < max_for_header { 0 } else { 1 };
-        headers_len += if self.tx.gas_price.unwrap_or_default() < max_for_header { 0 } else { 1 };
-        headers_len += if self.tx.gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
-        headers_len += if self.tx.value.unwrap_or_default() < max_for_header { 0 } else { 1 };
 
         // if the chain_id is none we assume mainnet and choose one
-        length += self.tx.chain_id.unwrap_or_else(U64::one).as_u64().length();
+        length += self.tx.chain_id.unwrap_or_else(U64::one).length();
         length += self.tx.tx_payload_length();
         length += self.access_list.length();
-
-        length += headers_len;
 
         length
     }
 
     /// Encodes the Eip2930TransactionRequest body to RLP bytes, not including the rlp list header.
     pub(crate) fn encode_tx_body(&self, out: &mut dyn bytes::BufMut) {
-        self.tx.chain_id.unwrap_or_else(U64::one).as_u64().encode(out);
+        self.tx.chain_id.unwrap_or_else(U64::one).encode(out);
         self.tx.encode_tx_body(out);
         self.access_list.encode(out);
     }
 
     /// Decodes the Eip1559TransactionRequest body, assuming there is no rlp list header.
     pub(crate) fn decode_tx_body(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
-        let chain_id = <bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into();
+        let chain_id = <U64 as fastrlp::Decodable>::decode(buf)?;
         let mut request = TransactionRequest::decode_tx_body(buf)?;
         request.chain_id = Some(chain_id);
         Ok(Self { tx: request, access_list: <AccessList as fastrlp::Decodable>::decode(buf)? })

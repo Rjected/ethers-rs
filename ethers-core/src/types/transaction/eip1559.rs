@@ -246,99 +246,56 @@ impl Eip1559TransactionRequest {
     pub(crate) fn tx_body_length(&self) -> usize {
         // add each of the fields' rlp encoded lengths
         let mut length = 0;
-        // the max value for a single byte to represent itself is 0x7f
-        let max_for_header = U256::from(fastrlp::EMPTY_STRING_CODE);
-        // the number of rlp string headers - each U256 can be either a single byte (and is < 0x7f)
-        // or less than 32
-        let mut headers_len = 0;
 
-        length += self.chain_id.unwrap_or_else(U64::one).as_u64().length();
-
-        length += self.nonce.unwrap_or_default().bits() as usize / 8;
-        headers_len += if self.nonce.unwrap_or_default() < max_for_header { 0 } else { 1 };
-
-        length += self.max_priority_fee_per_gas.unwrap_or_default().bits() as usize / 8;
-        headers_len +=
-            if self.max_priority_fee_per_gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
-
-        length += self.max_fee_per_gas.unwrap_or_default().bits() as usize / 8;
-        headers_len +=
-            if self.max_fee_per_gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
-
-        length += self.gas.unwrap_or_default().bits() as usize / 8;
-        headers_len += if self.gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
+        // if the chain_id is none we assume mainnet and choose one
+        length += self.chain_id.unwrap_or_else(U64::one).length();
+        length += self.nonce.unwrap_or_default().length();
+        length += self.max_priority_fee_per_gas.unwrap_or_default().length();
+        length += self.max_fee_per_gas.unwrap_or_default().length();
+        length += self.gas.unwrap_or_default().length();
 
         let to_addr =
             self.to.to_owned().unwrap_or_else(|| NameOrAddress::Address(Address::default()));
         length += to_addr.length();
 
-        length += self.value.unwrap_or_default().bits() as usize / 8;
-        headers_len += if self.value.unwrap_or_default() < max_for_header { 0 } else { 1 };
-
+        length += self.value.unwrap_or_default().length();
         length += self.data.to_owned().unwrap_or_default().0.length();
         length += self.access_list.length();
-        length += headers_len;
 
         length
     }
 
     /// Encodes the Eip1559TransactionRequest body to RLP bytes, not including the rlp list header.
     pub(crate) fn encode_tx_body(&self, out: &mut dyn bytes::BufMut) {
-        let mut uint_container = [0x00; 32];
-
         // if the chain_id is none we assume mainnet and choose one
         self.chain_id.unwrap_or_else(U64::one).as_u64().encode(out);
-
-        let nonce = self.nonce.unwrap_or_default();
-        nonce.to_big_endian(&mut uint_container[..]);
-        let nonce_bytes = &uint_container[nonce.leading_zeros() as usize / 8..];
-        nonce_bytes.encode(out);
-
-        let max_priority_fee_per_gas = self.max_priority_fee_per_gas.unwrap_or_default();
-        max_priority_fee_per_gas.to_big_endian(&mut uint_container[..]);
-        let max_priority_fee_per_gas_bytes =
-            &uint_container[max_priority_fee_per_gas.leading_zeros() as usize / 8..];
-        max_priority_fee_per_gas_bytes.encode(out);
-
-        let max_fee_per_gas = self.max_fee_per_gas.unwrap_or_default();
-        max_fee_per_gas.to_big_endian(&mut uint_container[..]);
-        let max_fee_per_gas_bytes = &uint_container[max_fee_per_gas.leading_zeros() as usize / 8..];
-        max_fee_per_gas_bytes.encode(out);
-
-        let gas = self.gas.unwrap_or_default();
-        gas.to_big_endian(&mut uint_container[..]);
-        let gas_bytes = &uint_container[gas.leading_zeros() as usize / 8..];
-        gas_bytes.encode(out);
+        self.nonce.unwrap_or_default().encode(out);
+        self.max_priority_fee_per_gas.unwrap_or_default().encode(out);
+        self.max_fee_per_gas.unwrap_or_default().encode(out);
+        self.gas.unwrap_or_default().encode(out);
 
         let to_addr =
             self.to.to_owned().unwrap_or_else(|| NameOrAddress::Address(Address::default()));
         to_addr.encode(out);
 
-        let value = self.value.unwrap_or_default();
-        value.to_big_endian(&mut uint_container[..]);
-        let value_bytes = &uint_container[value.leading_zeros() as usize / 8..];
-        value_bytes.encode(out);
-
+        self.value.unwrap_or_default().encode(out);
         self.data.to_owned().unwrap_or_default().0.encode(out);
-
         self.access_list.encode(out);
     }
 
     /// Decodes the Eip1559TransactionRequest body, assuming there is no rlp list header.
     pub(crate) fn decode_tx_body(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
         let mut request = Eip1559TransactionRequest::default();
-        request.chain_id = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-
-        request.nonce = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-        request.max_priority_fee_per_gas =
-            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-        request.max_fee_per_gas =
-            Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-        request.gas = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+        request.chain_id = Some(<U64 as fastrlp::Decodable>::decode(buf)?);
+        request.nonce = Some(<U256 as fastrlp::Decodable>::decode(buf)?);
+        request.max_priority_fee_per_gas = Some(<U256 as fastrlp::Decodable>::decode(buf)?);
+        request.max_fee_per_gas = Some(<U256 as fastrlp::Decodable>::decode(buf)?);
+        request.gas = Some(<U256 as fastrlp::Decodable>::decode(buf)?);
 
         let first = *buf
             .first()
             .ok_or(fastrlp::DecodeError::Custom("Cannot decode an address from empty bytes"))?;
+
         // 0x0 is encoded as an empty rlp list, 0x80
         request.to = if first == 0x80u8 {
             // consume the empty list
@@ -347,7 +304,8 @@ impl Eip1559TransactionRequest {
         } else {
             Some(<NameOrAddress as fastrlp::Decodable>::decode(buf)?)
         };
-        request.value = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+
+        request.value = Some(<U256 as fastrlp::Decodable>::decode(buf)?);
 
         let decoded_data = <bytes::Bytes as fastrlp::Decodable>::decode(buf)?;
         request.data = match decoded_data.len() {
