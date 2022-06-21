@@ -1516,8 +1516,7 @@ dependencies = [
 [[package]]
 name = "fastrlp"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0493d1c72e9bd097d02b962fa005f6241e6e97179d7ecd2ca1027e46f69db208"
+source = "git+https://github.com/rjected/fastrlp?branch=implement-ethereum-types#63dc1e174871fd81d6d93565a21e5b02a22e225c"
 dependencies = [
  "arrayvec 0.7.2",
  "auto_impl",
@@ -1529,8 +1528,7 @@ dependencies = [
 [[package]]
 name = "fastrlp-derive"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9499f20a2fa1a744422de24d1b4d1ec58f240147de1d0a3ceacadf2e240b4fc2"
+source = "git+https://github.com/rjected/fastrlp?branch=implement-ethereum-types#63dc1e174871fd81d6d93565a21e5b02a22e225c"
 dependencies = [
  "bytes",
  "proc-macro2",
