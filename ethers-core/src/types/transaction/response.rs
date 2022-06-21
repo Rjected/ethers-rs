@@ -471,9 +471,7 @@ impl TransactionReceipt {
             0
         };
 
-        // add the length of the header for the cumulativeGasUsed if it has one
-        length += if self.cumulative_gas_used < U256::from(0x7fu8) { 0 } else { 1 };
-        length += 32 - self.cumulative_gas_used.leading_zeros() as usize / 8;
+        length += self.cumulative_gas_used.length();
 
         length += self.logs_bloom.length();
         length += self.logs.length();
@@ -506,11 +504,7 @@ impl fastrlp::Encodable for TransactionReceipt {
             status.as_u64().encode(out);
         }
 
-        let mut uint_container = [0x00; 32];
-        self.cumulative_gas_used.to_big_endian(&mut uint_container[..]);
-        let cumulative_gas_used_bytes =
-            &uint_container[self.cumulative_gas_used.leading_zeros() as usize / 8..];
-        cumulative_gas_used_bytes.encode(out);
+        self.cumulative_gas_used.encode(out);
 
         self.logs_bloom.encode(out);
         self.logs.encode(out);
