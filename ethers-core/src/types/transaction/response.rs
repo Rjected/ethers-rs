@@ -524,7 +524,7 @@ impl fastrlp::Decodable for TransactionReceipt {
             // TODO: maybe bubble up the errors here?
             // TODO: make sure to test this! what if the buf is consumed on an error? Then, this
             // condition will fail on a valid status!
-            return Err(fastrlp::DecodeError::Custom("Receipt status failed to decode"));
+            return Err(fastrlp::DecodeError::Custom("Receipt status failed to decode"))
         }
 
         receipt.cumulative_gas_used = <U256 as fastrlp::Decodable>::decode(buf)?;

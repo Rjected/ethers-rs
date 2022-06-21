@@ -149,11 +149,7 @@ impl Signature {
         // within other structs, rather than on their own.
         // A Decodable implementation would need to decode a list header, then decode the signature
         // fields rather than just decoding fields as we do here.
-        Ok(Self {
-            r: U256::decode(buf)?,
-            s: U256::decode(buf)?,
-            v: u64::decode(buf)?,
-        })
+        Ok(Self { r: U256::decode(buf)?, s: U256::decode(buf)?, v: u64::decode(buf)? })
     }
 }
 
