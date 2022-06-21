@@ -515,8 +515,23 @@ impl fastrlp::Decodable for TransactionReceipt {
     fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
         // status = {post-state-root, {0, 1}}
         // [status, cumulativeGasUsed, logsBloom, logs]
+        let mut receipt = TransactionReceipt::default();
+        if let Ok(root) = <H256 as fastrlp::Decodable>::decode(buf) {
+            receipt.root = Some(root);
+        } else if let Ok(status) = <u8 as fastrlp::Decodable>::decode(buf) {
+            receipt.status = Some(status.into());
+        } else {
+            // TODO: maybe bubble up the errors here?
+            // TODO: make sure to test this! what if the buf is consumed on an error? Then, this
+            // condition will fail on a valid status!
+            return Err(fastrlp::DecodeError::Custom("Receipt status failed to decode"));
+        }
 
-        todo!()
+        receipt.cumulative_gas_used = <U256 as fastrlp::Decodable>::decode(buf)?;
+        receipt.logs_bloom = <Bloom as fastrlp::Decodable>::decode(buf)?;
+        receipt.logs = <Vec<Log> as fastrlp::Decodable>::decode(buf)?;
+
+        Ok(receipt)
     }
 }
 
