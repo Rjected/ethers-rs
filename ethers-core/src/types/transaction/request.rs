@@ -301,30 +301,15 @@ impl TransactionRequest {
     /// Encodes the TransactionRequest body to RLP bytes, _not including_ trailing EIP155 fields
     /// or the rlp list header
     pub(crate) fn encode_tx_body(&self, out: &mut dyn bytes::BufMut) {
-        let mut uint_container = [0x00; 32];
-        let nonce = self.nonce.unwrap_or_default();
-        nonce.to_big_endian(&mut uint_container[..]);
-        let nonce_bytes = &uint_container[nonce.leading_zeros() as usize / 8..];
-        nonce_bytes.encode(out);
-
-        let gas_price = self.gas_price.unwrap_or_default();
-        gas_price.to_big_endian(&mut uint_container[..]);
-        let gas_price_bytes = &uint_container[gas_price.leading_zeros() as usize / 8..];
-        gas_price_bytes.encode(out);
-
-        let gas = self.gas.unwrap_or_default();
-        gas.to_big_endian(&mut uint_container[..]);
-        let gas_bytes = &uint_container[gas.leading_zeros() as usize / 8..];
-        gas_bytes.encode(out);
+        self.nonce.unwrap_or_default().encode(out);
+        self.gas_price.unwrap_or_default().encode(out);
+        self.gas.unwrap_or_default().encode(out);
 
         let to_addr =
             self.to.to_owned().unwrap_or_else(|| NameOrAddress::Address(Address::default()));
         to_addr.encode(out);
 
-        let value = self.value.unwrap_or_default();
-        value.to_big_endian(&mut uint_container[..]);
-        let value_bytes = &uint_container[value.leading_zeros() as usize / 8..];
-        value_bytes.encode(out);
+        self.value.unwrap_or_default().encode(out);
 
         self.data.to_owned().unwrap_or_default().0.encode(out);
     }
@@ -336,28 +321,17 @@ impl TransactionRequest {
         // add each of the fields' rlp encoded lengths
         let mut length = 0;
 
-        // the max value for a single byte to represent itself is 0x7f
-        let max_for_header = U256::from(fastrlp::EMPTY_STRING_CODE);
-        // the number of rlp string headers - each U256 can be either a single byte (and is < 0x7f)
-        // or less than 32
-        let mut headers_len = 0;
-        headers_len += if self.nonce.unwrap_or_default() < max_for_header { 0 } else { 1 };
-        length += 32 - self.nonce.unwrap_or_default().leading_zeros() as usize / 8;
-        headers_len += if self.gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
-        length += 32 - self.gas.unwrap_or_default().leading_zeros() as usize / 8;
-
-        headers_len += if self.gas_price.unwrap_or_default() < max_for_header { 0 } else { 1 };
-        length += 32 - self.gas_price.unwrap_or_default().leading_zeros() as usize / 8;
+        length += self.nonce.unwrap_or_default().length();
+        length += self.gas.unwrap_or_default().length();
+        length += self.gas_price.unwrap_or_default().length();
 
         let to_addr =
             self.to.to_owned().unwrap_or_else(|| NameOrAddress::Address(Address::default()));
         length += to_addr.length();
 
-        headers_len += if self.value.unwrap_or_default() < max_for_header { 0 } else { 1 };
-        length += 32 - self.value.unwrap_or_default().leading_zeros() as usize / 8;
+        length += self.value.unwrap_or_default().length();
 
         length += self.data.to_owned().unwrap_or_default().0.length();
-        length += headers_len;
 
         length
     }
@@ -368,9 +342,9 @@ impl TransactionRequest {
         // [nonce, gas-price, gas, to, value, data, chainid, 0, 0]
         let mut request = TransactionRequest::default();
 
-        request.nonce = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-        request.gas_price = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
-        request.gas = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+        request.nonce = Some(<U256 as fastrlp::Decodable>::decode(buf)?);
+        request.gas_price = Some(<U256 as fastrlp::Decodable>::decode(buf)?);
+        request.gas = Some(<U256 as fastrlp::Decodable>::decode(buf)?);
 
         let first = *buf
             .first()
@@ -383,7 +357,7 @@ impl TransactionRequest {
         } else {
             Some(<NameOrAddress as fastrlp::Decodable>::decode(buf)?)
         };
-        request.value = Some(<bytes::Bytes as fastrlp::Decodable>::decode(buf)?[..].into());
+        request.value = Some(<U256 as fastrlp::Decodable>::decode(buf)?);
 
         let decoded_data = <bytes::Bytes as fastrlp::Decodable>::decode(buf)?;
         request.data = match decoded_data.len() {
@@ -435,7 +409,7 @@ impl fastrlp::Encodable for TransactionRequest {
         self.encode_tx_body(out);
 
         // if the chain_id is none we assume mainnet and choose one
-        self.chain_id.unwrap_or_else(U64::one).as_u64().encode(out);
+        self.chain_id.unwrap_or_else(U64::one).encode(out);
         0u64.encode(out);
         0u64.encode(out);
     }
