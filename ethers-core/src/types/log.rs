@@ -1,6 +1,7 @@
+use bytes::Buf;
 // Adapted from https://github.com/tomusdrw/rust-web3/blob/master/src/types/log.rs
-use fastrlp::{Header, Decodable, Encodable, length_of_length};
 use crate::types::{Address, Bytes, H256, U256, U64};
+use fastrlp::{length_of_length, Decodable, Encodable, Header};
 use serde::{Deserialize, Serialize};
 
 /// A log produced by a transaction.
@@ -94,6 +95,7 @@ impl Encodable for Log {
 
         length
     }
+
     fn encode(&self, out: &mut dyn bytes::BufMut) {
         // [contract-address, topics, data]
         let list_header = Header { list: true, payload_length: self.log_payload_length() };
@@ -110,18 +112,10 @@ impl Encodable for Log {
 
 impl Decodable for Log {
     fn decode(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
-        let list_header = *buf
-            .first()
-            .ok_or(fastrlp::DecodeError::Custom("Cannot decode a log from empty bytes"))?;
+        buf.first().ok_or(fastrlp::DecodeError::Custom("Cannot decode a log from empty bytes"))?;
 
-        let _header =
         // slice out the rlp list header
-        *buf = if list_header <= 0xf7 {
-            &buf[1..]
-        } else {
-            let len_of_len = list_header as usize - 0xf7;
-            &buf[1 + len_of_len..]
-        };
+        let _header = Header::decode(buf)?;
 
         let mut log = Log::default();
 
@@ -131,7 +125,7 @@ impl Decodable for Log {
         // 0x0 is encoded as an empty rlp list, 0x80
         log.address = if first == 0x80u8 {
             // consume the empty list
-            *buf = &buf[1..];
+            buf.advance(1);
             Address::zero()
         } else {
             Address::decode(buf)?
