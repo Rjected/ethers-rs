@@ -194,35 +194,15 @@ impl<TX> Block<TX> {
         length += self.transactions_root.length();
         length += self.receipts_root.length();
         length += self.logs_bloom.unwrap_or_default().length();
-
-        // the max value for a single byte to represent itself is 0x7f
-        let max_for_header = U256::from(0x7fu8);
-        // the number of rlp string headers - each U256 can be either a single byte (and is < 0x7f)
-        // or less than 32
-        let mut headers_len = 0;
-        headers_len += if self.difficulty < max_for_header { 0 } else { 1 };
-        length += 32 - self.difficulty.leading_zeros() as usize / 8;
-
-        length += self.number.unwrap_or_default().as_u64().length();
-
-        headers_len += if self.gas_limit < max_for_header { 0 } else { 1 };
-        length += 32 - self.gas_limit.leading_zeros() as usize / 8;
-
-        headers_len += if self.gas_used < max_for_header { 0 } else { 1 };
-        length += 32 - self.gas_used.leading_zeros() as usize / 8;
-
-        headers_len += if self.timestamp < max_for_header { 0 } else { 1 };
-        length += 32 - self.timestamp.leading_zeros() as usize / 8;
-
+        length += self.difficulty.length();
+        length += self.number.unwrap_or_default().length();
+        length += self.gas_limit.length();
+        length += self.gas_used.length();
+        length += self.timestamp.length();
         length += self.extra_data.0.length();
         length += self.mix_hash.unwrap_or_default().length();
-        length += self.nonce.unwrap_or_default().as_u64().length();
-
-        headers_len +=
-            if self.base_fee_per_gas.unwrap_or_default() < max_for_header { 0 } else { 1 };
-        length += 32 - self.base_fee_per_gas.unwrap_or_default().leading_zeros() as usize / 8;
-
-        length += headers_len;
+        length += self.nonce.unwrap_or_default().length();
+        length += self.base_fee_per_gas.unwrap_or_default().length();
         length
     }
 }
