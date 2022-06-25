@@ -160,9 +160,9 @@ impl fastrlp::Encodable for Signature {
         self.r.length() + self.s.length() + self.v.length()
     }
     fn encode(&self, out: &mut dyn bytes::BufMut) {
+        self.v.encode(out);
         self.r.encode(out);
         self.s.encode(out);
-        self.v.encode(out);
     }
 }
 
