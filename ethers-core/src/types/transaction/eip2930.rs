@@ -210,9 +210,7 @@ impl fastrlp::Encodable for Eip2930TransactionRequest {
         // add each of the fields' rlp encoded lengths
         let mut length = 0;
         length += self.tx_body_length();
-
-        // header would encode length_of_length + 1 bytes
-        length += if length > 55 { 1 + length_of_length(length) } else { 1 };
+        length += length_of_length(length);
 
         length
     }

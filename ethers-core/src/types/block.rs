@@ -657,7 +657,7 @@ impl Encodable for Block<TypedTransaction> {
         let mut length = 0;
         let header_len = self.header_payload_length();
         length += header_len;
-        length += if header_len > 55 { 1 + length_of_length(header_len) } else { 1 };
+        length += length_of_length(header_len);
 
         length += self.transactions.length();
         unimplemented!()

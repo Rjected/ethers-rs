@@ -89,9 +89,7 @@ impl Encodable for Log {
         // add each of the fields' rlp encoded lengths
         let mut length = 0;
         length += self.log_payload_length();
-
-        // header would encode length_of_length + 1 bytes
-        length += if length > 55 { 1 + length_of_length(length) } else { 1 };
+        length += length_of_length(length);
 
         length
     }

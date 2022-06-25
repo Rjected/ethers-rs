@@ -485,9 +485,7 @@ impl fastrlp::Encodable for TransactionReceipt {
     fn length(&self) -> usize {
         let mut length = 0;
         length += self.payload_length();
-
-        // header would encode length_of_length + 1 bytes
-        length += if length > 55 { 1 + length_of_length(length) } else { 1 };
+        length += length_of_length(length);
 
         length
     }
