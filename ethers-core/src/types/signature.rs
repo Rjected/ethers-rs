@@ -145,7 +145,8 @@ impl Signature {
 
     /// Decodes a signature from RLP bytes, assuming no RLP header
     pub(crate) fn decode_signature(buf: &mut &[u8]) -> Result<Self, fastrlp::DecodeError> {
-        Ok(Self { r: U256::decode(buf)?, s: U256::decode(buf)?, v: u64::decode(buf)? })
+        let v = u64::decode(buf)?;
+        Ok(Self { r: U256::decode(buf)?, s: U256::decode(buf)?, v })
     }
 }
 
