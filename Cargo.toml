@@ -153,6 +153,3 @@ required-features = ["yubi"]
 name = "paginated_logs"
 path = "examples/paginated_logs.rs"
 required-features = ["rustls"]
-
-[patch.crates-io]
-fastrlp = { git = "https://github.com/rjected/fastrlp", branch = "implement-ethereum-types", features = ["std", "derive", "ethereum-types"] }

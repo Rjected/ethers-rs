@@ -1516,7 +1516,7 @@ dependencies = [
 [[package]]
 name = "fastrlp"
 version = "0.1.1"
-source = "git+https://github.com/rjected/fastrlp?branch=implement-ethereum-types#63dc1e174871fd81d6d93565a21e5b02a22e225c"
+source = "git+https://github.com/vorot93/fastrlp#4ad1aace9948380790d7f922585899e65e44b58f"
 dependencies = [
  "arrayvec 0.7.2",
  "auto_impl",
@@ -1528,7 +1528,7 @@ dependencies = [
 [[package]]
 name = "fastrlp-derive"
 version = "0.1.1"
-source = "git+https://github.com/rjected/fastrlp?branch=implement-ethereum-types#63dc1e174871fd81d6d93565a21e5b02a22e225c"
+source = "git+https://github.com/vorot93/fastrlp#4ad1aace9948380790d7f922585899e65e44b58f"
 dependencies = [
  "bytes",
  "proc-macro2",
