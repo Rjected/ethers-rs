@@ -15,6 +15,7 @@ use crate::CeloMiddleware;
 use crate::Middleware;
 use async_trait::async_trait;
 
+use bytes::BytesMut;
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
@@ -645,6 +646,12 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let rlp = utils::serialize(&tx);
         let tx_hash = self.request("eth_sendRawTransaction", [rlp]).await?;
         Ok(PendingTransaction::new(tx_hash, self).interval(self.get_interval()))
+    }
+
+    /// Get the raw RLP encoded transaction from the transaction hash.
+    async fn get_raw_transaction_by_hash(&self, hash: TxHash) -> Result<Option<BytesMut>, Self::Error> {
+        let tx_hash = self.request("eth_getRawTransactionByHash", hash).await?;
+        Ok(tx_hash)
     }
 
     /// The JSON-RPC provider is at the bottom-most position in the middleware stack. Here we check

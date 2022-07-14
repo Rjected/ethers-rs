@@ -37,6 +37,7 @@ use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::Access
 use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 use url::Url;
+use bytes::BytesMut;
 
 pub use provider::{FilterKind, Provider, ProviderError};
 
@@ -393,6 +394,10 @@ pub trait Middleware: Sync + Send + Debug {
         tx: Bytes,
     ) -> Result<PendingTransaction<'a, Self::Provider>, Self::Error> {
         self.inner().send_raw_transaction(tx).await.map_err(FromErr::from)
+    }
+
+    async fn get_raw_transaction_by_hash(&self, hash: TxHash) -> Result<Option<BytesMut>, Self::Error> {
+        self.inner().get_raw_transaction_by_hash(hash).await.map_err(FromErr::from)
     }
 
     /// This returns true if either the middleware stack contains a `SignerMiddleware`, or the
