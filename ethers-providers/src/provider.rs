@@ -585,9 +585,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         }
     }
 
-    /// Returns the network version.
+    /// Returns the chain id.
     async fn get_net_version(&self) -> Result<String, ProviderError> {
         self.request("net_version", ()).await
+    }
+
+    /// Returns the eth protocol version.
+    /// TODO: 64 bits is way too many for a protocol version - it could be a u8 even.
+    /// maybe consider returning a u8
+    async fn protocol_version(&self) -> Result<u64, ProviderError> {
+        let version: U64 = self.request("eth_protocolVersion", ()).await?;
+        Ok(version.as_u64())
     }
 
     ////// Contract Execution
