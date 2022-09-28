@@ -51,7 +51,7 @@ pub struct Transaction {
     pub gas_price: Option<U256>,
 
     /// Gas amount
-    pub gas: U256,
+    pub gas: U64,
 
     /// Input data
     pub input: Bytes,
@@ -558,7 +558,7 @@ mod tests {
             block_hash: None,
             block_number: None,
             from: Address::from_str("057f8d0f6fb2703197363f75c002f766f1c4287a").unwrap(),
-            gas: U256::from_str_radix("0x6d22", 16).unwrap(),
+            gas: U64::from_str_radix("0x6d22", 16).unwrap(),
             gas_price: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
             hash: H256::from_str(
                 "781d57642f4e3277fe01d370bd45ba1361b475bea6a35f26814e02a0a2b26549",
@@ -602,7 +602,7 @@ mod tests {
             block_hash: None,
             block_number: None,
             from: Address::from_str("057f8d0f6fb2703197363f75c002f766f1c4287a").unwrap(),
-            gas: U256::from_str_radix("0x6d22", 16).unwrap(),
+            gas: U64::from_str_radix("0x6d22", 16).unwrap(),
             gas_price: Some(U256::from_str_radix("0x1344ead983", 16).unwrap()),
             hash: H256::from_str(
                 "781d57642f4e3277fe01d370bd45ba1361b475bea6a35f26814e02a0a2b26549",
@@ -646,7 +646,7 @@ mod tests {
             block_hash: None,
             block_number: None,
             from: Address::from_str("c26ad91f4e7a0cad84c4b9315f420ca9217e315d").unwrap(),
-            gas: U256::from_str_radix("0x10e2b", 16).unwrap(),
+            gas: U64::from_str_radix("0x10e2b", 16).unwrap(),
             gas_price: Some(U256::from_str_radix("0x12ec276caf", 16).unwrap()),
             hash: H256::from_str("929ff27a5c7833953df23103c4eb55ebdfb698678139d751c51932163877fada").unwrap(),
             input: Bytes::from(
@@ -802,7 +802,7 @@ mod tests {
             block_hash: None,
             block_number: None,
             from: Address::from_str("c26ad91f4e7a0cad84c4b9315f420ca9217e315d").unwrap(),
-            gas: U256::from_str_radix("0x10e2b", 16).unwrap(),
+            gas: U64::from_str_radix("0x10e2b", 16).unwrap(),
             gas_price: Some(U256::from_str_radix("0x12ec276caf", 16).unwrap()),
             hash: H256::from_str("929ff27a5c7833953df23103c4eb55ebdfb698678139d751c51932163877fada").unwrap(),
             input: Bytes::from(
@@ -837,7 +837,7 @@ mod tests {
             block_hash: None,
             block_number: None,
             from: Address::from_str("c26ad91f4e7a0cad84c4b9315f420ca9217e315d").unwrap(),
-            gas: U256::from_str_radix("0x10e2b", 16).unwrap(),
+            gas: U64::from_str_radix("0x10e2b", 16).unwrap(),
             gas_price: Some(U256::from_str_radix("0x12ec276caf", 16).unwrap()),
             hash: H256::from_str("929ff27a5c7833953df23103c4eb55ebdfb698678139d751c51932163877fada").unwrap(),
             input: Bytes::from(

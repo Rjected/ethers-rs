@@ -34,7 +34,7 @@ pub struct Eip1559TransactionRequest {
 
     /// Supplied gas (None for sensible default)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas: Option<U256>,
+    pub gas: Option<U64>,
 
     /// Transferred value (None for no transfer)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -100,7 +100,7 @@ impl Eip1559TransactionRequest {
 
     /// Sets the `gas` field in the transaction to the provided value
     #[must_use]
-    pub fn gas<T: Into<U256>>(mut self, gas: T) -> Self {
+    pub fn gas<T: Into<U64>>(mut self, gas: T) -> Self {
         self.gas = Some(gas.into());
         self
     }

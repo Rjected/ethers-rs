@@ -154,7 +154,7 @@ impl TypedTransaction {
         self
     }
 
-    pub fn gas(&self) -> Option<&U256> {
+    pub fn gas(&self) -> Option<&U64> {
         match self {
             Legacy(inner) => inner.gas.as_ref(),
             Eip2930(inner) => inner.tx.gas.as_ref(),
@@ -162,7 +162,7 @@ impl TypedTransaction {
         }
     }
 
-    pub fn gas_mut(&mut self) -> &mut Option<U256> {
+    pub fn gas_mut(&mut self) -> &mut Option<U64> {
         match self {
             Legacy(inner) => &mut inner.gas,
             Eip2930(inner) => &mut inner.tx.gas,
@@ -170,7 +170,7 @@ impl TypedTransaction {
         }
     }
 
-    pub fn set_gas<T: Into<U256>>(&mut self, gas: T) -> &mut Self {
+    pub fn set_gas<T: Into<U64>>(&mut self, gas: T) -> &mut Self {
         let gas = gas.into();
         match self {
             Legacy(inner) => inner.gas = Some(gas),
@@ -308,7 +308,7 @@ impl TypedTransaction {
         let gas_limit = self.gas();
         let gas_price = self.gas_price();
         match (gas_limit, gas_price) {
-            (Some(gas_limit), Some(gas_price)) => Some(gas_limit * gas_price),
+            (Some(gas_limit), Some(gas_price)) => Some(U256::from(gas_limit.as_u64()) * U256::from(gas_price.as_u64())),
             _ => None,
         }
     }
