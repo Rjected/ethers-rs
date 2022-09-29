@@ -138,7 +138,7 @@ where
 ///
 ///     /// Overrides the default `estimate_gas` method to log that it was called,
 ///     /// before forwarding the call to the next layer.
-///     async fn estimate_gas(&self, tx: &TypedTransaction, block: Option<BlockId>) -> Result<U256, Self::Error> {
+///     async fn estimate_gas(&self, tx: &TypedTransaction, block: Option<BlockId>) -> Result<U64, Self::Error> {
 ///         println!("Estimating gas...");
 ///         self.inner().estimate_gas(tx, block).await.map_err(FromErr::from)
 ///     }
@@ -312,7 +312,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         tx: &TypedTransaction,
         block: Option<BlockId>,
-    ) -> Result<U256, Self::Error> {
+    ) -> Result<U64, Self::Error> {
         self.inner().estimate_gas(tx, block).await.map_err(FromErr::from)
     }
 

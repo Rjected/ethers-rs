@@ -565,14 +565,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     }
 
     /// Sends a transaction to a single Ethereum node and return the estimated amount of gas
-    /// required (as a U256) to send it This is free, but only an estimate. Providing too little
+    /// required (as a U64) to send it This is free, but only an estimate. Providing too little
     /// gas will result in a transaction being rejected (while still consuming all provided
     /// gas).
     async fn estimate_gas(
         &self,
         tx: &TypedTransaction,
         block: Option<BlockId>,
-    ) -> Result<U256, ProviderError> {
+    ) -> Result<U64, ProviderError> {
         let tx = utils::serialize(tx);
         // Some nodes (e.g. old Optimism clients) don't support a block ID being passed as a param,
         // so refrain from defaulting to BlockNumber::Latest.
@@ -2008,7 +2008,7 @@ mod tests {
         let (mut provider, mock) = Provider::mocked();
         provider.from = Some("0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap());
 
-        let gas = U256::from(21000_usize);
+        let gas = U64::from(21000_usize);
         let max_fee = U256::from(25_usize);
         let prio_fee = U256::from(25_usize);
         let access_list: AccessList = vec![Default::default()].into();
@@ -2081,7 +2081,7 @@ mod tests {
         let (mut provider, mock) = Provider::mocked();
         provider.from = Some("0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap());
 
-        let gas = U256::from(21000_usize);
+        let gas = U64::from(21000_usize);
         let gas_price = U256::from(50_usize);
 
         // --- leaves a filled legacy transaction unchanged, making no requests
