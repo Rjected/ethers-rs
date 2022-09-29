@@ -1,6 +1,6 @@
 use ethers_core::types::{
     transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
-    Address, BlockId, Bytes, Signature, U256,
+    Address, BlockId, Bytes, Signature, U64,
 };
 use ethers_providers::{maybe, FromErr, Middleware, PendingTransaction};
 use ethers_signers::Signer;
@@ -307,7 +307,7 @@ where
         &self,
         tx: &TypedTransaction,
         block: Option<BlockId>,
-    ) -> Result<U256, Self::Error> {
+    ) -> Result<U64, Self::Error> {
         let tx = self.set_tx_from_if_none(tx);
         self.inner.estimate_gas(&tx, block).await.map_err(SignerMiddlewareError::MiddlewareError)
     }
@@ -338,7 +338,7 @@ where
 mod tests {
     use super::*;
     use ethers_core::{
-        types::TransactionRequest,
+        types::{TransactionRequest, U256},
         utils::{self, keccak256, Anvil},
     };
     use ethers_providers::Provider;
