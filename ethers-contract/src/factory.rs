@@ -74,7 +74,7 @@ impl<M: Middleware, C: From<Contract<M>>> ContractDeployer<M, C> {
     }
 
     /// Sets the `gas` field in the deploy transaction to the provided value
-    pub fn gas<T: Into<U256>>(mut self, gas: T) -> Self {
+    pub fn gas<T: Into<U64>>(mut self, gas: T) -> Self {
         self.deployer.tx.set_gas(gas.into());
         self
     }

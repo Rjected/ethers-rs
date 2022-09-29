@@ -5,7 +5,7 @@ use ethers_core::{
     abi::{AbiDecode, AbiEncode, Detokenize, Function, InvalidOutputType, Tokenizable},
     types::{
         transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, Selector,
-        TransactionRequest, U256,
+        TransactionRequest, U256, U64,
     },
     utils::id,
 };
@@ -112,7 +112,7 @@ impl<M, D: Detokenize> ContractCall<M, D> {
     }
 
     /// Sets the `gas` field in the transaction to the provided value
-    pub fn gas<T: Into<U256>>(mut self, gas: T) -> Self {
+    pub fn gas<T: Into<U64>>(mut self, gas: T) -> Self {
         self.tx.set_gas(gas);
         self
     }
@@ -149,7 +149,7 @@ where
     }
 
     /// Returns the estimated gas cost for the underlying transaction to be executed
-    pub async fn estimate_gas(&self) -> Result<U256, ContractError<M>> {
+    pub async fn estimate_gas(&self) -> Result<U64, ContractError<M>> {
         self.client.estimate_gas(&self.tx, self.block).await.map_err(ContractError::MiddlewareError)
     }
 
