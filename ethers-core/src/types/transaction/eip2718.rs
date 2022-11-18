@@ -593,11 +593,8 @@ mod tests {
         "hash": "0x6b63ec3780cd33e4e9450055d1af86e18627070af37f2bdae30f9088d6b12880",
         "input": "0x",
         "nonce": "0xd6e8",
-        "r": "0xf6aed388a6f8e82f3b7d3d0f62431d41a4f3194e2f51e575dccc35bc7752355a",
-        "s": "0x4f1ea3b9ee635ffb6675fa5a12f4451e0d16060e7911436b5fda48c8a06d503e",
         "to": "0x52f6d6e1db786c8ce34a1c7bddeec27dfc231a16",
         "transactionIndex": "0xa3",
-        "v": "0x26",
         "value": "0x96ed5acf6e42ba"
         }"#,
         )
@@ -619,11 +616,8 @@ mod tests {
         "hash": "0x6b63ec3780cd33e4e9450055d1af86e18627070af37f2bdae30f9088d6b12880",
         "input": "0x",
         "nonce": "0xd6e8",
-        "r": "0xf6aed388a6f8e82f3b7d3d0f62431d41a4f3194e2f51e575dccc35bc7752355a",
-        "s": "0x4f1ea3b9ee635ffb6675fa5a12f4451e0d16060e7911436b5fda48c8a06d503e",
         "to": "0x52f6d6e1db786c8ce34a1c7bddeec27dfc231a16",
         "transactionIndex": "0xa3",
-        "v": "0x26",
         "value": "0x96ed5acf6e42ba"
         }"#,
         )
@@ -645,12 +639,9 @@ mod tests {
         "hash": "0x6b63ec3780cd33e4e9450055d1af86e18627070af37f2bdae30f9088d6b12880",
         "input": "0x",
         "nonce": "0xd6e8",
-        "r": "0xf6aed388a6f8e82f3b7d3d0f62431d41a4f3194e2f51e575dccc35bc7752355a",
-        "s": "0x4f1ea3b9ee635ffb6675fa5a12f4451e0d16060e7911436b5fda48c8a06d503e",
         "to": "0x52f6d6e1db786c8ce34a1c7bddeec27dfc231a16",
         "transactionIndex": "0xa3",
         "type": "0x0",
-        "v": "0x26",
         "value": "0x96ed5acf6e42ba"
         }"#,
         )
