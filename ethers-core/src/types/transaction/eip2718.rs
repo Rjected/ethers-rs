@@ -578,6 +578,50 @@ mod tests {
         assert_eq!(tx, TypedTransaction::Legacy(de));
     }
 
+    #[cfg(not(feature = "legacy"))]
+    #[test]
+    fn test_untagged_legacy_tx() {
+        let _tx: TransactionRequest = serde_json::from_str(
+            r#"{
+            "gas": "0x186a0",
+            "maxFeePerGas": "0x77359400",
+            "maxPriorityFeePerGas": "0x77359400",
+            "data": "0x5544",
+            "nonce": "0x2",
+            "to": "0x96216849c49358B10257cb55b28eA603c874b05E",
+            "value": "0x5af3107a4000",
+            "chainId": "0x539",
+            "accessList": [],
+            "v": "0x1",
+            "r": "0xc3000cd391f991169ebfd5d3b9e93c89d31a61c998a21b07a11dc6b9d66f8a8e",
+            "s": "0x22cfe8424b2fbd78b16c9911da1be2349027b0a3c40adf4b6459222323773f74"
+        }"#,
+        )
+        .unwrap();
+    }
+
+    #[cfg(not(feature = "legacy"))]
+    #[test]
+    fn test_untagged_legacy_typed_tx() {
+        let _tx: TypedTransaction = serde_json::from_str(
+            r#"{
+            "gas": "0x186a0",
+            "maxFeePerGas": "0x77359400",
+            "maxPriorityFeePerGas": "0x77359400",
+            "data": "0x5544",
+            "nonce": "0x2",
+            "to": "0x96216849c49358B10257cb55b28eA603c874b05E",
+            "value": "0x5af3107a4000",
+            "chainId": "0x539",
+            "accessList": [],
+            "v": "0x1",
+            "r": "0xc3000cd391f991169ebfd5d3b9e93c89d31a61c998a21b07a11dc6b9d66f8a8e",
+            "s": "0x22cfe8424b2fbd78b16c9911da1be2349027b0a3c40adf4b6459222323773f74"
+        }"#,
+        )
+        .unwrap();
+    }
+
     #[test]
     fn test_typed_tx_without_access_list() {
         let tx: Eip1559TransactionRequest = serde_json::from_str(
