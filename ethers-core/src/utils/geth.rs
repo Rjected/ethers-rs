@@ -5,7 +5,7 @@ use std::{
     fs::{create_dir, File},
     io::{BufRead, BufReader},
     path::PathBuf,
-    process::{Child, Command, Stdio},
+    process::{Child, ChildStderr, Command, Stdio},
     time::{Duration, Instant},
 };
 
@@ -74,6 +74,11 @@ impl GethInstance {
     /// Returns the path to this instances' data directory
     pub fn data_dir(&self) -> &Option<PathBuf> {
         &self.data_dir
+    }
+
+    /// Returns the stderr contained in the child process.
+    pub fn stderr(&mut self) -> Result<ChildStderr, GethInstanceError> {
+        self.pid.stderr.take().ok_or(GethInstanceError::NoStderr)
     }
 
     /// Blocks until geth adds the specified peer, using 20s as the timeout.
