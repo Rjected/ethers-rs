@@ -408,6 +408,7 @@ impl Geth {
             cmd.arg("--ipcpath").arg(ipc);
         }
 
+        println!("child command being spawned: {:?}", cmd);
         let mut child = cmd.spawn().expect("couldnt start geth");
 
         let stderr = child.stderr.expect("Unable to get stderr for geth child process");
@@ -427,6 +428,8 @@ impl Geth {
 
             let mut line = String::new();
             reader.read_line(&mut line).expect("Failed to read line from geth process");
+
+            println!("line from geth: {}", line);
 
             if matches!(self.mode, GethMode::NonDev(_)) && line.contains("Started P2P networking") {
                 p2p_started = true;
